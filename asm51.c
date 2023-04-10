@@ -6,36 +6,39 @@
 
 #define DEBUG
 
+// all sfrs (basic 8051)
 const struct sfr defined_vars[] = {
-   {"acc",0xe0,true},
-   {"psw",0xd0,true},
-   {"p0",0x80,true},
-   {"p1",0x90,true},
-   {"p2",0xa0,true},
-   {"p3",0xb0,true},
-   {"ie",0xa8,true},
-   {"ip",0xb8,true},
-   {"tcon",0x88,true},
-   {"scon",0x98,true},
-   {"sbuf",0x99,true},
-   {"dpl",0x02,false},
-   {"dph",0x03,false},
-   {"sp",0x81,false},
-   {"tl0",0x8a,false},
-   {"tl1",0x8b,false},
-   {"th0",0x8c,false},
-   {"th1",0x8d,false},
-   {"pcon",0x87,false},
-   {"tmod",0x89,false},
-   {"b",0xf0,false}
+   {"acc",0xe0,1},
+   {"psw",0xd0,1},
+   {"p0",0x80,1},
+   {"p1",0x90,1},
+   {"p2",0xa0,1},
+   {"p3",0xb0,1},
+   {"ie",0xa8,1},
+   {"ip",0xb8,1},
+   {"tcon",0x88,1},
+   {"scon",0x98,1},
+   {"sbuf",0x99,1},
+   {"dpl",0x02,0},
+   {"dph",0x03,0},
+   {"sp",0x81,0},
+   {"tl0",0x8a,0},
+   {"tl1",0x8b,0},
+   {"th0",0x8c,0},
+   {"th1",0x8d,0},
+   {"pcon",0x87,0},
+   {"tmod",0x89,0},
+   {"b",0xf0,0}
 };
 
+// all valid operands
 const char * all_operands[] = {
 	"a","@r0","@r1","r0","r1","r2","r3","r4","r5","r6","r7",
 	"c","@a+dptr","ab","@a+pc","dptr","@dptr","","addr11",
 	"addr16","offset","bit","direct","immed","label",
 };
 
+// all valid mnemonics
 const char * all_mnemonics[] = {
 	"nop","ajmp","ljmp","rr","inc","jbc","acall","lcall",
 	"rrc","dec","jb","ret","rl","add","jnb","reti","rlc",
@@ -45,6 +48,7 @@ const char * all_mnemonics[] = {
 	"xchd","movx",""
 };
 
+// get mnemonic enum from string
 enum mnemonic_type get_mnemonic_enum(char *word){
 	// check through all possible mnemonics
     for(int i=0;i<mn_invalid;i++){
@@ -55,7 +59,8 @@ enum mnemonic_type get_mnemonic_enum(char *word){
     return mn_invalid; // return invalid if no matching mnemonic
 }
 
-int checklabel(char *label){
+// checks for valid label
+int check_label(char *label){
 	if(isalpha(label[0])){	// first char of label must be an alphabet
 		for(int i=1;label[i]!='\0';i++){	// other chars must be alphanumeric
 			if(!isalnum(label[i])){
@@ -67,9 +72,9 @@ int checklabel(char *label){
 	return 0;
 }
 
-int checksfr(char *word,struct operand *out){
-	// check through all sfr
-    for(int i=0;i<20;i++){
+// checks if operand is sfr
+int check_sfr(char *word,struct operand *out){
+    for(int i=0;i<20;i++){	// check all sfr
 		if(!strcmp(defined_vars[i].name,word)){
 			out->type = op_direct;
 			out->value = defined_vars[i].addr;
@@ -79,12 +84,24 @@ int checksfr(char *word,struct operand *out){
 	return 0;
 }
 
-// base - 2,10,16 only
-int strtoint(int *out_val,char *str,int start,int end,int base){
+// converts the following formats of string to int
+// 12 12h 0x12 -12 'a' 1110b
+int str_to_int(int *out_val,char *str,int start,int end,int base){
+	if(end - start == 2){	// char to ASCII value - todo - fix lowercase input for operands
+		if(str[start]==str[end] && (str[end]=='"'|| str[end]=='\'')){
+			*out_val = (int)str[start+1];
+			return 1;		
+		}
+	}
+
 	for(int i=end,j=1;i>=start;i--,j*=base){
 		char w = str[i];
+		if(i==start && w=='-' && *out_val<256){	// negative index from 0xff
+			*out_val = 256-*out_val;
+			return 1;
+		}	
 		int iw = w-'0';	// char to int (0-9)
-		bool is_digit = isdigit(w);
+		unsigned char is_digit = iw>=0 && iw<=9;
 		if(base==16){
 			if(w<='f' && w>='a'){
 				iw = w-87;	// hex char to int (a-f)
@@ -93,7 +110,7 @@ int strtoint(int *out_val,char *str,int start,int end,int base){
 				return 0;
 			}
 		}
-		else if(base<=10){
+		else{
 			if(!is_digit || (base==2 && iw>1)){
 				return 0;
 			}
@@ -103,7 +120,8 @@ int strtoint(int *out_val,char *str,int start,int end,int base){
 	return 1;
 }
 
-struct operand get_operand_mnemonic(char *word){
+// get operand
+struct operand get_operand_struct(char *word){
 	struct operand out = {op_invalid,0x00};
 
 	// check through all possible operands
@@ -116,12 +134,12 @@ struct operand get_operand_mnemonic(char *word){
 	}
 
 	// check for special function registers like acc,b,psw etc
-	if(checksfr(word,&out)){
+	if(check_sfr(word,&out)){
 		return out;
 	}
 
 	// check for value based operands - label,direct,bit,addr,offset,immed
-	if(checklabel(word)){
+	if(check_label(word)){
 		out.type = op_label;
 		return out;
 	}
@@ -145,7 +163,7 @@ struct operand get_operand_mnemonic(char *word){
 		base = 2;
 		end--;
 	}
-	if(strtoint(&out.value,word,start,end,base)){
+	if(str_to_int(&out.value,word,start,end,base)){
 		if(out.value>0xff){
 			out.type = op_addr16;
 		}
@@ -160,6 +178,7 @@ struct operand get_operand_mnemonic(char *word){
 	return out;
 }
 
+// get words one by one from line
 char get_token(FILE *file,char *out_str,char end_char){
 	char ch;
 	int i = 0;
@@ -188,20 +207,24 @@ char get_token(FILE *file,char *out_str,char end_char){
 	return ch;	// return last char
 }
 
+// assemble into char array
 void assemble(char *mnemonic,char operands[3][16],int *addr){
 	enum mnemonic_type mn = get_mnemonic_enum(mnemonic);
 	struct operand op[] = {{op_invalid,0},{op_invalid,0},{op_invalid,0},{op_invalid,0}};
 	int data[2] = {-1,-1};
-
-	for(int i=0,j=0;i<3;i++){
-		op[i] = get_operand_mnemonic(operands[i]);
+	int j = 0;	// num of operands with data
+	for(int i=0;i<3;i++){
+		op[i] = get_operand_struct(operands[i]);
 		if(op[i].value>-1){
 			data[j++] = op[i].value;
 		}
 	}
 
-
-	int instr = findinstruction(mn,op);
+	int instr = get_opcode(mn,op);
+	
+	if(instr!=0xA5){	// increment address by instruction size
+		*addr += 1+j;
+	}
 
 	printf(" %2x",instr);
 	if(data[0]>-1){
@@ -238,7 +261,8 @@ void assemble(char *mnemonic,char operands[3][16],int *addr){
 #endif
 }
 
-void pushlabelsrc(struct labels *lb,char *label,int addr,int *array_size){
+// push defined labels with their address
+void push_label_src(struct labels *lb,char *label,int addr,int *array_size){
 	int i;
 	for(i=0;i<*array_size;i++){
 		if(!strcmp(lb[i].name,label)){
@@ -261,6 +285,14 @@ int main(int argc, char **argv){
 		return 1;
 	}
 	else if(argc==2){
+		if(argv[1][0]=='-'){
+			if(argv[1][1]=='h'){
+				printf("Usage:\nasm51 [input_file] -o [output_file]\n");
+				return 1;
+			}
+			printf("Invalid arguments: Use -h for help\n");
+			return 1;
+		}
 		 file_loc = argv[1];
 	}
 	else if(argc==4 && strcmp("-o",argv[2])){
@@ -275,15 +307,15 @@ int main(int argc, char **argv){
 	FILE *asm_file = fopen(file_loc,"r");
 
 	if(asm_file == NULL){
-		printf("%s: file does not exist\n",file_loc);
+		printf("File '%s' not found\n",file_loc);
 		return 0;
 	}
 
 	int line_count = 0;
 	int addr = 0x0000;
 
-	struct labels all_labels[50];
-	int label_pos[50];
+	struct labels all_labels[256];	// index and name of all labels 
+	int label_pos[256];	// byte pos of all labels
 	label_pos[0] = 0; //first element is size of array
 	int label_count = 0;
 
@@ -299,15 +331,15 @@ int main(int argc, char **argv){
 		// clear all previous value
 		label[0] = '\0';
 		mnemonic[0] = '\0';
-		for(int i=0;i<3;i++){
-			operands[i][0] = '\0';
-		}
+		operands[0][0] = '\0';
+		operands[1][0] = '\0';
+		operands[2][0] = '\0';
 		operand_count = 0;
 
 		// get mnemonic or label
 		ch = get_token(asm_file,mnemonic,' ');
 		if(ch==':'){	// if label is found
-			pushlabelsrc(all_labels,mnemonic,addr,&label_count);
+			push_label_src(all_labels,mnemonic,addr,&label_count);
 			// memcpy(label,mnemonic,strlen(mnemonic)+1);
 			ch = get_token(asm_file,mnemonic,' ');
 		}
@@ -323,7 +355,6 @@ int main(int argc, char **argv){
 				if(ch=='\n' || feof(asm_file)){
 					break;
 				}
-
 			}
 		}
 
@@ -335,7 +366,6 @@ int main(int argc, char **argv){
 
 		printf("%2d|",line_count);
 		assemble(mnemonic,operands,&addr);
-
 	}
 
 	printf("\nLabels:");

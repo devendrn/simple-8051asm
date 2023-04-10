@@ -1,8 +1,14 @@
 #ifndef ASM51_HEADER
 #define ASM51_HEADER
 
-// boolean logic
-typedef enum {false,true} bool;
+// assembler errors
+enum asm_error {
+	err_mnem,	// invalid mnemonic
+	err_op,		// invalid operand
+	err_instr,	// invalid instruction
+	err_bou,	// label out of range
+	err_dupli	// duplicate label
+};
 
 // @ replaced by a, + replaced by _
 enum operand_type {
@@ -29,7 +35,7 @@ struct operand {
 struct sfr{
 	char name[4];
 	int addr;
-	bool bit_addr;
+	unsigned char bit_addr;	// 1 = bit addressable, 0 = not bit addr
 };
 
 // label name and address (16 bit)
@@ -41,7 +47,6 @@ struct labels {
 struct instruction{
     enum mnemonic_type mnemonic;
     enum operand_type operands[3];
-    int size;
 };
 
 #endif
