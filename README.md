@@ -3,7 +3,7 @@
 Simple assembler for 8051 microcontrollers. Outputs in Intel Hex format
 
 ## !! Unfinished - Does not output any file !!
-Only the prasing part is complete. Assembling part is incomplete.
+Only the parsing part is complete. Assembling part is incomplete.
 
 ## Building
 #### On Linux:
@@ -13,11 +13,11 @@ gcc asm51.c -o asm51
 ```
 ## Usage
 ```
-asm51 [asm file] -o [output hex file]
+asm51 [input_asm] -o [output_hex]
 ```
 Example
 ```
-asm51 sort.asm -o sort.hex
+asm51 examples/sort.asm -o sort.hex
 ```
 ## Accepted syntax
 Please see [examples](examples/). `START:` and `END` are not required inside the .asm file

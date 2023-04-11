@@ -4,8 +4,6 @@
 #include "asm51.h"
 #include "instructions.c"
 
-#define DEBUG
-
 // all sfrs (basic 8051)
 const struct sfr defined_vars[] = {
    {"acc",0xe0,1},
@@ -72,23 +70,68 @@ int check_label(char *label){
 	return 0;
 }
 
+int str_cmp(const char *word_l,const char *word_s,char end){
+	for(int i=0;word_l[i]!=end && word_l[i]!='\0';i++){
+		if(word_l[i]!=word_s[i]){
+			return 0;
+		}
+	}
+	return 1;
+}
+
 // checks if operand is sfr
 int check_sfr(char *word,struct operand *out){
-    for(int i=0;i<20;i++){	// check all sfr
+	int l = strlen(word);
+	
+	if(l>3){
+		if(word[l-2]=='.'){	// check bit addressing with index
+			char last = word[l-1];
+			if(last<='7' && last>='0'){
+				for(int i=0;i<20;i++){
+					if(str_cmp(defined_vars[i].name,word,'.') && defined_vars[i].bit_addr==1){
+						out->type = op_bit;
+						out->value = defined_vars[i].addr + word[l-1] - '0' ;
+						return 1;
+					}
+				}
+			}
+			out->type = op_invalid;
+			return 1;
+		}
+	}
+
+	for(int i=0;i<20;i++){	// check all sfr
 		if(!strcmp(defined_vars[i].name,word)){
 			out->type = op_direct;
 			out->value = defined_vars[i].addr;
 			return 1;
 		}
 	}
+
 	return 0;
 }
 
 // converts the following formats of string to int
 // 12 12h 0x12 -12 'a' 1110b
-int str_to_int(int *out_val,char *str,int start,int end,int base){
-	if(end - start == 2){	// char to ASCII value - todo - fix lowercase input for operands
-		if(str[start]==str[end] && (str[end]=='"'|| str[end]=='\'')){
+int str_to_int(int *out_val,char *str){
+	int base = 10;
+	int start = 0;
+	int end = strlen(str) - 1;
+	if(str[end]=='h'){	// hex
+		base = 16;
+		end--;
+	}	
+	if(str[start]=='0' && str[start+1]=='x'){	// hex
+		base = 16;
+		start += 2;
+	}
+	else if(str[end]=='b'){	// binary 
+		base = 2;
+		end--;
+	}
+
+	if(end - start == 2){	// char to ASCII value
+		if(str[start]==str[end] && str[end]=='\''){
 			*out_val = (int)str[start+1];
 			return 1;		
 		}
@@ -120,12 +163,12 @@ int str_to_int(int *out_val,char *str,int start,int end,int base){
 	return 1;
 }
 
-// get operand
+// get operand - todo: add bit operands
 struct operand get_operand_struct(char *word){
 	struct operand out = {op_invalid,0x00};
 
 	// check through all possible operands
-    for(int i=0; i<=op_none;i++){
+	for(int i=0; i<=op_none;i++){
 		if(!strcmp(all_operands[i],word)){
 			out.type = i;
 			out.value = -1;
@@ -144,30 +187,16 @@ struct operand get_operand_struct(char *word){
 		return out;
 	}
 
-	int base = 10;
 	int start = 0;
-	int end = strlen(word) - 1;
-	if(word[0]=='#'){
+	if(word[0]=='#'){	// check for immed operand
 		out.type = op_immed;
 		start = 1;
 	}
-	if(word[end]=='h'){
-		base = 16;
-		end--;
-	}
-	if(word[start]=='0' && word[start+1]=='x'){
-		base = 16;
-		start += 2;
-	}
-	else if(word[end]=='b'){
-		base = 2;
-		end--;
-	}
-	if(str_to_int(&out.value,word,start,end,base)){
-		if(out.value>0xff){
-			out.type = op_addr16;
-		}
-		else if(out.type!=op_immed){
+	if(str_to_int(&out.value,&word[start])){
+		//if(out.value>0xff){
+		//	out.type = op_addr16;
+		//}
+		if(out.type!=op_immed){
 			out.type = op_direct;
 		}
 	}
@@ -182,6 +211,7 @@ struct operand get_operand_struct(char *word){
 char get_token(FILE *file,char *out_str,char end_char){
 	char ch;
 	int i = 0;
+	char j = 0;
 	while(1){
 		ch = fgetc(file);
 		if(ch==';'){
@@ -190,18 +220,26 @@ char get_token(FILE *file,char *out_str,char end_char){
 			ch = '\n';
 			break;
 		}
-		if(ch==end_char || ch==':' || ch=='\n' || feof(file)){
-			// if : break (check last char outside the func to detect label)
-			// else break if eol/eof
-			break;
-		}
 		if((ch==' ' || ch=='\t')){
 			if(end_char==',' || i==0){
 				// skip spaces and tabs if scanning for operands or if mnemonic not found
 				continue;
 			}
 		}
-		out_str[i++] = tolower(ch);
+		if(ch==end_char || ch==':' || ch=='\n' || feof(file)){
+			// if : break (check last char outside the func to detect label)
+			// else break if eol/eof
+			break;
+		}
+		if(ch=='\''){	// make char case sensitive for char to ascii operands
+			j = 1-j;
+		}
+		if(j){
+			out_str[i++] = ch;	
+		}
+		else{
+			out_str[i++] = tolower(ch);
+		}
 	}
 	out_str[i]='\0'; // end string
 	return ch;	// return last char
@@ -226,6 +264,7 @@ void assemble(char *mnemonic,char operands[3][16],int *addr){
 		*addr += 1+j;
 	}
 
+	// for debug
 	printf(" %2x",instr);
 	if(data[0]>-1){
 		printf(" %2x",data[0]);
@@ -239,9 +278,6 @@ void assemble(char *mnemonic,char operands[3][16],int *addr){
 		printf("   ");
 	}
 	printf(" | ");
-
-
-#ifdef DEBUG
 	if(mn!=mn_none){
 		printf(" m(%6s/%6s)",mnemonic,all_mnemonics[mn]);
 		for(int i=0;i<3;i++){
@@ -258,7 +294,6 @@ void assemble(char *mnemonic,char operands[3][16],int *addr){
 		}
 	}
 	printf("\n");
-#endif
 }
 
 // push defined labels with their address
@@ -323,7 +358,7 @@ int main(int argc, char **argv){
 	char mnemonic[16];
 	char operands[3][16];
 	int operand_count;
-
+	char out_hex[256];
 	char ch;
 	int errors[20];
 
@@ -372,7 +407,10 @@ int main(int argc, char **argv){
 	for(int i=0;i<label_count;i++){
 		printf("\nl%d:%7s | %4x",i,all_labels[i].name,all_labels[i].addr);
 	}
-
+	//printf("\nLabel pos");
+	//for(int i=0;i<label_count;i++){
+	//	printf("%d ",i);
+	//}
 	printf("\n");
 	fclose(asm_file);
 	return 0;
