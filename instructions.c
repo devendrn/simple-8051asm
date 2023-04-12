@@ -260,8 +260,8 @@ const struct instruction all_instructions[256] = {
 };
 
 // return opcode of matching instruction
-int get_opcode(enum mnemonic_type mn,struct operand op[]){
-    for(int i=0;i<256;i++){
+unsigned char get_opcode(enum mnemonic_type mn,struct operand op[]){
+    for(int i=0;i<=0xff;i++){
         if(mn!=all_instructions[i].mnemonic){
             continue;
         }
@@ -281,5 +281,5 @@ int get_opcode(enum mnemonic_type mn,struct operand op[]){
             return i;   // return instruction opcode
         }
     }
-    return 0xA5;    // no matching instruction found
+    return 0xa5;    // no matching instruction found
 }

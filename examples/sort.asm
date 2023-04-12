@@ -1,6 +1,6 @@
 ; 8051 program to sort n bytes in ascending order
 		org 4100h
-		mov dptr,#4100h
+		mov dptr,#4300h
 		movx a,@dptr
 		mov r0,a ;get count
 		dec r0	;last = count - 1

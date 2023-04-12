@@ -17,9 +17,9 @@ const struct sfr defined_vars[] = {
    {"tcon",0x88,1},
    {"scon",0x98,1},
    {"sbuf",0x99,1},
-   {"dpl",0x02,0},
-   {"dph",0x03,0},
    {"sp",0x81,0},
+   {"dpl",0x82,0},
+   {"dph",0x83,0},
    {"tl0",0x8a,0},
    {"tl1",0x8b,0},
    {"th0",0x8c,0},
@@ -49,12 +49,12 @@ const char * all_mnemonics[] = {
 // get mnemonic enum from string
 enum mnemonic_type get_mnemonic_enum(char *word){
 	// check through all possible mnemonics
-    for(int i=0;i<mn_invalid;i++){
+	for(int i=0;i<mn_invalid;i++){
 		if(!strcmp(all_mnemonics[i],word)){
-            return i;
+			return i;
 		}
 	}
-    return mn_invalid; // return invalid if no matching mnemonic
+	return mn_invalid; // return invalid if no matching mnemonic
 }
 
 // checks for valid label
@@ -62,8 +62,7 @@ int check_label(char *label){
 	if(isalpha(label[0])){	// first char of label must be an alphabet
 		for(int i=1;label[i]!='\0';i++){	// other chars must be alphanumeric
 			if(!isalnum(label[i])){
-				return 0;
-			}
+				return 0; }
 		}
 		return 1;
 	}
@@ -246,7 +245,7 @@ char get_token(FILE *file,char *out_str,char end_char){
 }
 
 // assemble into char array
-void assemble(char *mnemonic,char operands[3][16],int *addr){
+void assemble(unsigned char out[][2],char *mnemonic,char operands[3][16],int *addr){
 	enum mnemonic_type mn = get_mnemonic_enum(mnemonic);
 	struct operand op[] = {{op_invalid,0},{op_invalid,0},{op_invalid,0},{op_invalid,0}};
 	int data[2] = {-1,-1};
@@ -258,22 +257,31 @@ void assemble(char *mnemonic,char operands[3][16],int *addr){
 		}
 	}
 
-	int instr = get_opcode(mn,op);
+	unsigned char instr = get_opcode(mn,op);
 	
-	if(instr!=0xA5){	// increment address by instruction size
-		*addr += 1+j;
+	if(instr!=0xa5){	// store in hex array - todo:labels
+		out[*addr][0] = instr;
+		*addr += 1;
+		if(data[0]>-1){
+			out[*addr][0] = data[0];
+			*addr += 1;
+		}
+		if(data[1]>-1){
+			out[*addr][0] = data[1];
+			*addr += 1;
+		}
 	}
 
 	// for debug
-	printf(" %2x",instr);
+	printf(" %02x",instr);
 	if(data[0]>-1){
-		printf(" %2x",data[0]);
+		printf(" %02x",data[0]);
 	}
 	else{
 		printf("   ");
 	}
 	if(data[1]>-1){
-		printf(" %2x",data[1]);
+		printf(" %02x",data[1]);
 	}else{
 		printf("   ");
 	}
@@ -346,24 +354,24 @@ int main(int argc, char **argv){
 		return 0;
 	}
 
-	int line_count = 0;
-	int addr = 0x0000;
+	int line_count = 0;	// line position for locating error
+	int addr = 0x0000;	// byte address
 
-	struct labels all_labels[256];	// index and name of all labels 
-	int label_pos[256];	// byte pos of all labels
-	label_pos[0] = 0; //first element is size of array
-	int label_count = 0;
+	struct labels all_labels[256];	// index and name of all labels
+	int label_src_count = 0;
 
 	char label[16];
 	char mnemonic[16];
 	char operands[3][16];
 	int operand_count;
-	char out_hex[256];
-	char ch;
-	int errors[20];
+	
+	// second element - 0x00:skip(no edit)  0x01:to offset  0xff:end 
+	unsigned char out_hex[512][2];	// output hex array
 
+	// process instructions line by line
+	char ch;
 	while(1){
-		// clear all previous value
+		// set all empty 
 		label[0] = '\0';
 		mnemonic[0] = '\0';
 		operands[0][0] = '\0';
@@ -371,11 +379,13 @@ int main(int argc, char **argv){
 		operands[2][0] = '\0';
 		operand_count = 0;
 
-		// get mnemonic or label
+		// get mnemonic (it can also be label)
 		ch = get_token(asm_file,mnemonic,' ');
-		if(ch==':'){	// if label is found
-			push_label_src(all_labels,mnemonic,addr,&label_count);
+		
+		// if token was	label, look for mnemonic again
+		if(ch==':'){
 			// memcpy(label,mnemonic,strlen(mnemonic)+1);
+			push_label_src(all_labels,mnemonic,addr,&label_src_count);
 			ch = get_token(asm_file,mnemonic,' ');
 		}
 
@@ -400,18 +410,23 @@ int main(int argc, char **argv){
 		}
 
 		printf("%2d|",line_count);
-		assemble(mnemonic,operands,&addr);
+		assemble(out_hex,mnemonic,operands,&addr);
 	}
 
 	printf("\nLabels:");
-	for(int i=0;i<label_count;i++){
-		printf("\nl%d:%7s | %4x",i,all_labels[i].name,all_labels[i].addr);
+	for(int i=0;i<label_src_count;i++){
+		printf("\nl%d:%7s | %04x",i,all_labels[i].name,all_labels[i].addr);
 	}
-	//printf("\nLabel pos");
-	//for(int i=0;i<label_count;i++){
-	//	printf("%d ",i);
-	//}
 	printf("\n");
+	
+	out_hex[addr][1] = 0xff;
+	printf("\nHex array:\n");
+	for(int i=0;out_hex[i][1]!=0xff;i++){
+		printf(" %02x %02x |",out_hex[i][0],out_hex[i][1]);
+		if((1+i)%8==0){
+			printf("\n");
+		}
+	}
 	fclose(asm_file);
 	return 0;
 }
