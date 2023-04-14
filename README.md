@@ -2,8 +2,16 @@
 
 Simple assembler for 8051 microcontrollers. Outputs in Intel Hex format
 
-## !! Unfinished - Does not output any file !!
-Only the parsing part is complete. Assembling part is incomplete.
+## !! Unfinished !!
+
+#### To-do:
+ - Add org
+ - Fix addr11 issues
+ - Parsing for named sfr bits
+ - Error check and log
+ - Reformat style
+ - Optimize code
+ - Input file validation (START: and END)
 
 ## Building
 #### On Linux:

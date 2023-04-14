@@ -99,7 +99,7 @@ int check_sfr(char *word,struct operand *out){
 		}
 	}
 
-	for(int i=0;i<20;i++){	// check all sfr
+	for(int i=0;i<21;i++){	// check all sfr
 		if(!strcmp(defined_vars[i].name,word)){
 			out->type = op_direct;
 			out->value = defined_vars[i].addr;
@@ -244,36 +244,82 @@ char get_token(FILE *file,char *out_str,char end_char){
 	return ch;	// return last char
 }
 
+// find label index
+int search_label(struct labels *all_labels,int *count,char *label){
+	int i;
+	for(i=0;i<*count;i++){
+		if(!strcmp(label,all_labels[i].name)){
+			return i;	// return matching index
+		}
+	}
+	// push label if not found
+	memcpy(all_labels[i].name,label,strlen(label));
+	all_labels[i].addr = -1;
+	*count += 1;
+	return i;
+}
+
 // assemble into char array
-void assemble(unsigned char out[][2],char *mnemonic,char operands[3][16],int *addr){
+void assemble(unsigned char out[][2],char *mnemonic,char operands[3][16],int *addr,struct labels *all_labels,int *label_count){
 	enum mnemonic_type mn = get_mnemonic_enum(mnemonic);
-	struct operand op[] = {{op_invalid,0},{op_invalid,0},{op_invalid,0},{op_invalid,0}};
+	struct operand op[4];
+
 	int data[2] = {-1,-1};
 	int j = 0;	// num of operands with data
+	int k = -1;	// label pos if any
 	for(int i=0;i<3;i++){
 		op[i] = get_operand_struct(operands[i]);
 		if(op[i].value>-1){
+			if(op[i].type==op_label){
+				k = i;
+			}
 			data[j++] = op[i].value;
 		}
 	}
 
-	unsigned char instr = get_opcode(mn,op);
+	unsigned char opcode = get_opcode(mn,op);
 	
-	if(instr!=0xa5){	// store in hex array - todo:labels
-		out[*addr][0] = instr;
+	if(opcode!=0xa5){	// store in hex array 
+		// pack op code
+		out[*addr][0] = opcode;
 		*addr += 1;
+		
+		// pack data
 		if(data[0]>-1){
-			out[*addr][0] = data[0];
-			*addr += 1;
+			if(op[0].type==op_dptr){	// dptr takes 2 bytes
+				int msb = data[0]/256;
+				out[*addr][0] = msb;
+				*addr += 1;
+				out[*addr][0] = data[0]-msb*256;
+				*addr += 1;
+			}
+			else{
+				out[*addr][0] = data[0];
+				*addr += 1;
+			}
 		}
 		if(data[1]>-1){
 			out[*addr][0] = data[1];
 			*addr += 1;
 		}
+		
+		// pack label details if any
+		if(k>-1){
+			int pos = search_label(all_labels,label_count,operands[k]);
+			out[*addr-1][0] = pos;
+			enum operand_type parse_type = all_instructions[opcode].operands[k];
+			if(parse_type==op_offset){
+				out[*addr-1][1] = 1;
+			}
+			else if(parse_type==op_addr16){
+				out[*addr-1][1] = 2;
+				*addr += 1;	// reserve next space for a byte
+			}
+		}
 	}
 
 	// for debug
-	printf(" %02x",instr);
+	printf(" %02x",opcode);
 	if(data[0]>-1){
 		printf(" %02x",data[0]);
 	}
@@ -285,11 +331,11 @@ void assemble(unsigned char out[][2],char *mnemonic,char operands[3][16],int *ad
 	}else{
 		printf("   ");
 	}
-	printf(" | ");
+	printf(" |");
 	if(mn!=mn_none){
-		printf(" m(%6s/%6s)",mnemonic,all_mnemonics[mn]);
+		printf("%6s >%6s |",mnemonic,all_mnemonics[mn]);
 		for(int i=0;i<3;i++){
-			printf(" o%d(%8s/%8s:%4d)",i,operands[i],all_operands[op[i].type],op[i].value);
+			printf(" %8s > %8s:%4d |",operands[i],all_operands[op[i].type],op[i].value);
 		}
 	}
 	if(mn==mn_invalid){
@@ -307,7 +353,7 @@ void assemble(unsigned char out[][2],char *mnemonic,char operands[3][16],int *ad
 // push defined labels with their address
 void push_label_src(struct labels *lb,char *label,int addr,int *array_size){
 	int i;
-	for(i=0;i<*array_size;i++){
+	for(i=0;i<*array_size;i++){	// check if label already exists
 		if(!strcmp(lb[i].name,label)){
 			lb[i].addr = addr;
 			return;
@@ -318,39 +364,98 @@ void push_label_src(struct labels *lb,char *label,int addr,int *array_size){
 	*array_size = *array_size + 1;
 }
 
+// substitute undefined data(labels) with offset or address
+void substitute_labels(unsigned char hex_array[][2],struct labels *all_labels){
+	int i = -1;
+	while(1){
+		i++;
+		unsigned char *type = &hex_array[i][1];
+		if(*type==0xff){	// end of hex array
+			break;
+		}
+		if(*type==0){	// defined data - skip
+			continue;
+		}
+		int addr = all_labels[hex_array[i][0]].addr;
+		if(*type==2){	// addr16
+			hex_array[i][0] = addr/256;
+			hex_array[i+1][0] = addr - hex_array[i][0];
+			i++;
+		}
+		if(*type==1){	// offset
+			int offset = addr - i;
+			if(offset<0){
+				hex_array[i][0] = 0xff + offset;
+			}
+			else{
+				hex_array[i][0] = offset - 1;
+			}
+		}
+	}
+}
+
+// pack bytes into intel hex format with record size of 16
+// :<byte_count><addr><record_type><bytes><checksum>
+void pack_ihex(FILE *file_out,unsigned char hex_array[][2],int org_addr){
+	unsigned char byte_count = 0;
+	unsigned int addr = org_addr;	// orgin address
+	unsigned char record_type = 0;
+	unsigned char data[16];
+	unsigned char checksum = 0;
+	
+	int i = 0;
+	while(hex_array[i][1]!=0xff){
+		data[byte_count] = hex_array[i][0];
+		checksum += data[byte_count];
+		byte_count++;
+		i++;
+		if(byte_count==16 || hex_array[i][1]==0xff){	// one record complete
+			
+			// checksum = 2s complement of sum of all bytes
+			int addr_msb = addr/256;
+			checksum += byte_count + addr_msb + (addr-addr_msb*256);
+			checksum = ~checksum + 1;
+
+			fprintf(file_out,":%02X%04X%02X",byte_count,addr,record_type);
+			for(int j=0;j<byte_count;j++){
+				fprintf(file_out,"%02X",data[j]);
+			}
+			fprintf(file_out,"%02hhX\n",checksum);
+			
+			addr += byte_count;
+			byte_count = 0;
+			checksum = 0;
+		}
+	}	
+	fprintf(file_out,":00000001FF");	// end
+}
+
 int main(int argc, char **argv){
 
-	char *file_loc;
-	char *file_dest;
-
-	if(argc==1){
-		printf("No arguments given: Use -h for help\n");
+	char *file_in;
+	char *file_out = "a.hex";
+	
+	if(argc==2 && argv[1][0]=='-' && argv[1][1]=='h'){
+		printf("Usage:\nasm51 [input_file] -o [output_file]\n");
 		return 1;
 	}
-	else if(argc==2){
-		if(argv[1][0]=='-'){
-			if(argv[1][1]=='h'){
-				printf("Usage:\nasm51 [input_file] -o [output_file]\n");
-				return 1;
-			}
-			printf("Invalid arguments: Use -h for help\n");
-			return 1;
-		}
-		 file_loc = argv[1];
+	else if(argc==2 && argv[1][0]!='-'){
+		printf("%s",argv[1]);
+		file_in = argv[1];
 	}
 	else if(argc==4 && strcmp("-o",argv[2])){
-		file_loc = argv[1];
-		file_dest = argv[3];
+		file_in = argv[1];
+		file_out = argv[3];
 	}
 	else{
 		printf("Invalid arguments: Use -h for help\n");
-		return 1;
+		return 0;
 	}
 
-	FILE *asm_file = fopen(file_loc,"r");
+	FILE *asm_file = fopen(file_in,"r");
 
 	if(asm_file == NULL){
-		printf("File '%s' not found\n",file_loc);
+		printf("File '%s' not found\n",file_in);
 		return 0;
 	}
 
@@ -358,14 +463,16 @@ int main(int argc, char **argv){
 	int addr = 0x0000;	// byte address
 
 	struct labels all_labels[256];	// index and name of all labels
-	int label_src_count = 0;
+	int all_labels_count = 0;
 
 	char label[16];
 	char mnemonic[16];
 	char operands[3][16];
 	int operand_count;
 	
-	// second element - 0x00:skip(no edit)  0x01:to offset  0xff:end 
+	// first column for data
+	// second column for label substitute details
+	// 0:skip  1:offset  2:addr16  255:end 
 	unsigned char out_hex[512][2];	// output hex array
 
 	// process instructions line by line
@@ -385,7 +492,7 @@ int main(int argc, char **argv){
 		// if token was	label, look for mnemonic again
 		if(ch==':'){
 			// memcpy(label,mnemonic,strlen(mnemonic)+1);
-			push_label_src(all_labels,mnemonic,addr,&label_src_count);
+			push_label_src(all_labels,mnemonic,addr,&all_labels_count);
 			ch = get_token(asm_file,mnemonic,' ');
 		}
 
@@ -410,12 +517,14 @@ int main(int argc, char **argv){
 		}
 
 		printf("%2d|",line_count);
-		assemble(out_hex,mnemonic,operands,&addr);
+		assemble(out_hex,mnemonic,operands,&addr,all_labels,&all_labels_count);
 	}
 
+	fclose(asm_file);
+
 	printf("\nLabels:");
-	for(int i=0;i<label_src_count;i++){
-		printf("\nl%d:%7s | %04x",i,all_labels[i].name,all_labels[i].addr);
+	for(int i=0;i<all_labels_count;i++){
+		printf("\n%2d:%7s | %04x",i,all_labels[i].name,all_labels[i].addr);
 	}
 	printf("\n");
 	
@@ -427,6 +536,18 @@ int main(int argc, char **argv){
 			printf("\n");
 		}
 	}
-	fclose(asm_file);
+
+	substitute_labels(out_hex,all_labels);
+
+	printf("\n\nFinal hex:\n");
+	for(int i=0;out_hex[i][1]!=0xff;i++){
+		printf(" %02x",out_hex[i][0]);
+		if((1+i)%8==0){
+			printf("\n");
+		}
+	}
+
+	FILE *hex_file = fopen(file_out,"w");
+	pack_ihex(hex_file,out_hex,0);	
 	return 0;
 }

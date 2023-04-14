@@ -273,7 +273,7 @@ unsigned char get_opcode(enum mnemonic_type mn,struct operand op[]){
                     continue;
                 }
             }
-            if(op[j].type!=all_instructions[i].operands[j]){
+            if(op[j].type!=search){
                 break;
             }
         }
