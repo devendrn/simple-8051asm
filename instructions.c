@@ -261,23 +261,21 @@ const struct instruction all_instructions[256] = {
 
 // return opcode of matching instruction
 unsigned char get_opcode(enum mnemonic_type mn,struct operand op[]){
-    for(int i=0;i<=0xff;i++){
+    for(int i=0;i<256;i++){
         if(mn!=all_instructions[i].mnemonic){
             continue;
         }
         int j;
         for(j=0;j<3;j++){
             enum operand_type search = all_instructions[i].operands[j];
-            if(op[j].type==op_label){   // labels can replace offset,addr16,addr11
-                if(search<=op_offset && search>=op_addr11){
-                    continue;
-                }
+            if(op[j].type==op_label && search<=op_offset && search>=op_addr11){   // labels can replace offset,addr16,addr11
+                continue;
             }
             if(op[j].type!=search){
                 break;
             }
         }
-        if(j==3){
+        if(j>2){
             return i;   // return instruction opcode
         }
     }

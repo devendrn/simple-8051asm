@@ -32,10 +32,9 @@ struct operand {
 };
 
 // special function registers details
-struct sfr{
+struct sfr {
 	char name[4];
 	int addr;
-	unsigned char bit_addr;	// 1 = bit addressable, 0 = not bit addr
 };
 
 // label name and address (16 bit)
@@ -44,7 +43,7 @@ struct labels {
 	int addr;
 };
 
-struct instruction{
+struct instruction {
     enum mnemonic_type mnemonic;
     enum operand_type operands[3];
 };
