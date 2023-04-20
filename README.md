@@ -5,13 +5,12 @@ Simple assembler for 8051 microcontrollers. Outputs in Intel Hex format
 ## !! Unfinished !!
 
 #### To-do:
- - Add org
  - Fix addr11 issues
  - Parsing for named sfr bits
- - Error check and log
  - Reformat style
  - Optimize code
- - Input file validation (START: and END)
+ - Detailed error log
+ - Input file validation
 
 ## Building
 #### On Linux:

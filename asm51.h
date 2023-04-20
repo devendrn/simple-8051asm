@@ -1,15 +1,6 @@
 #ifndef ASM51_HEADER
 #define ASM51_HEADER
 
-// assembler errors
-enum asm_error {
-	err_mnem,	// invalid mnemonic
-	err_op,		// invalid operand
-	err_instr,	// invalid instruction
-	err_bou,	// label out of range
-	err_dupli	// duplicate label
-};
-
 // @ replaced by a, + replaced by _
 enum operand_type {
 	op_a,op_ar0,op_ar1,op_r0,op_r1,op_r2,op_r3,op_r4,op_r5,op_r6,op_r7,op_c,
@@ -22,7 +13,7 @@ enum mnemonic_type {
 	mn_jb,mn_ret,mn_rl,mn_add,mn_jnb,mn_reti,mn_rlc,mn_addc,mn_jc,mn_orl,mn_jnc,
 	mn_anl,mn_jz,mn_xrl,mn_jnz,mn_jmp,mn_mov,mn_sjmp,mn_movc,mn_div,mn_subb,mn_mul,
 	mn_cpl,mn_cjne,mn_push,mn_clr,mn_swap,mn_xch,mn_pop,mn_setb,mn_da,mn_djnz,
-	mn_xchd,mn_movx,mn_none,mn_invalid
+	mn_xchd,mn_movx,mn_none,mn_org,mn_invalid
 };
 
 // operand type and their value
