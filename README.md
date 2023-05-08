@@ -1,13 +1,13 @@
 # simple-8051asm
 
-Simple assembler for 8051 microcontrollers. Outputs in Intel Hex format
+Simple assembler for 8051 microcontrollers. Outputs in Intel Hex format.
 
 ## !! Unfinished !!
 
 #### To-do:
+ - Reformat code
  - Fix addr11 issues
  - Parsing for named sfr bits
- - Reformat style
  - Optimize code
  - Detailed error log
  - Input file validation
@@ -15,17 +15,19 @@ Simple assembler for 8051 microcontrollers. Outputs in Intel Hex format
 ## Building
 #### On Linux:
 ```
-cd simple-8051asm
-gcc asm51.c -o asm51
+make
 ```
+
 ## Usage
+simple-8051asm only accepts one input and output file.
 ```
 asm51 [input_asm] -o [output_hex]
 ```
-Example
+Example:
 ```
 asm51 examples/sort.asm -o sort.hex
 ```
+
 ## Accepted syntax
 Please see [examples](examples/). `START:` and `END` are not required inside the .asm file
 ```

@@ -1,5 +1,49 @@
-#include "asm51.h"
+#include "literals.h"
 
+// all sfrs (basic 8051)
+const struct sfr defined_vars[] = {
+	// bit addressable (0-10)
+	{"acc",0xe0},
+	{"psw",0xd0},
+	{"p0",0x80},
+	{"p1",0x90},
+	{"p2",0xa0},
+	{"p3",0xb0},
+	{"ie",0xa8},
+	{"ip",0xb8},
+	{"tcon",0x88},
+	{"scon",0x98},
+	{"sbuf",0x99},
+
+	// not bit addressable (11-20)
+	{"sp",0x81},
+	{"dpl",0x82},
+	{"dph",0x83},
+	{"tl0",0x8a},
+	{"tl1",0x8b},
+	{"th0",0x8c},
+	{"th1",0x8d},
+	{"pcon",0x87},
+	{"tmod",0x89},
+	{"b",0xf0}
+};
+
+const char * all_operands[] = {
+	"a","@r0","@r1","r0","r1","r2","r3","r4","r5","r6","r7",
+	"c","@a+dptr","ab","@a+pc","dptr","@dptr","","addr11",
+	"addr16","offset","bit","direct","immed","label",
+};
+
+const char * all_mnemonics[] = {
+	"nop","ajmp","ljmp","rr","inc","jbc","acall","lcall",
+	"rrc","dec","jb","ret","rl","add","jnb","reti","rlc",
+	"addc","jc","orl","jnc","anl","jz","xrl","jnz","jmp",
+	"mov","sjmp","movc","div","subb","mul","cpl","cjne",
+	"push","clr","swap","xch","pop","setb","da","djnz",
+	"xchd","movx","","org"
+};
+
+// 8051 instruction table
 const struct instruction all_instructions[256] = {
     {mn_nop,{op_none,op_none,op_none}},
     {mn_ajmp,{op_addr11,op_none,op_none}},
@@ -258,26 +302,3 @@ const struct instruction all_instructions[256] = {
     {mn_mov,{op_r6,op_a,op_none}},
     {mn_mov,{op_r7,op_a,op_none}},
 };
-
-// return opcode of matching instruction
-unsigned char get_opcode(enum mnemonic_type mn,struct operand op[]){
-    for(int i=0;i<256;i++){
-        if(mn!=all_instructions[i].mnemonic){
-            continue;
-        }
-        int j;
-        for(j=0;j<3;j++){
-            enum operand_type search = all_instructions[i].operands[j];
-            if(op[j].type==op_label && search<=op_offset && search>=op_addr11){   // labels can replace offset,addr16,addr11
-                continue;
-            }
-            if(op[j].type!=search){
-                break;
-            }
-        }
-        if(j>2){
-            return i;   // return instruction opcode
-        }
-    }
-    return 0xa5;    // no matching instruction found
-}
