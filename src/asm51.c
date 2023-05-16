@@ -55,6 +55,20 @@ int search_label(char *label){
 	return i;
 }
 
+
+unsigned char set_acall_addr(unsigned char *opcode, unsigned char *addr11, unsigned int val, unsigned int current_addr){
+	
+	if(current_addr>>11 != val>>11){	// return false if not in same page
+		return 0;
+	}
+
+	// acall takes 11 bits - 8 from operand, 3 from opcode
+	// a10 a9 a8 1 0 0 0 1  a7 a6 a5 a4 a3 a2 a1
+	*opcode = ((val>>8)<<5) + 0x11;
+	*addr11 = val%256;
+	return 1;
+}
+
 // assemble into char array
 void assemble(unsigned char out[][2],char *mnemonic,char operands[3][16]){
 	int er = 0;
@@ -110,17 +124,25 @@ void assemble(unsigned char out[][2],char *mnemonic,char operands[3][16]){
 		
 		// pack data
 		if(data[0]>-1){
-			if(op[0].type==op_dptr){	// dptr takes 2 bytes
-				int msb = data[0]/256;
+			if(op[0].type==op_dptr){
+				// dptr takes 2 bytes
+				int msb = data[0]>>8;
 				out[addr++][0] = msb;
-				out[addr++][0] = data[0]-msb*256;
+				out[addr++][0] = data[0]-(msb<<8);
 				if(data[0]>0xffff){
 					print_error(1,"Value cannot be larger than 65535","");
 				}
 			}
 			else{
 				out[addr++][0] = data[0];
-				if(data[0]>0xff){
+				if(mn==mn_acall && k<0){ // acall label shall be processed later
+					unsigned int current_addr = org_addr>=0 ? addr+org_addr : addr;
+					if(!set_acall_addr(&out[addr-2][0],&out[addr][0],data[0],current_addr)){
+						print_error(1,"Address not in the same page","");
+					}
+				}
+				else if(data[0]>0xff){
+					// dont check data if acall
 					print_error(1,"Value cannot be larger than 255","");
 				}
 			}
@@ -137,12 +159,19 @@ void assemble(unsigned char out[][2],char *mnemonic,char operands[3][16]){
 			int pos = search_label(operands[k]);
 			out[addr-1][0] = pos;
 			enum operand_type parse_type = all_instructions[opcode].operands[k];
-			if(parse_type==op_offset){
-				out[addr-1][1] = 1;
-			}
-			else if(parse_type==op_addr16){
-				out[addr-1][1] = 2;
-				addr++;	// reserve next space for a byte
+			switch(parse_type){
+				case op_offset:
+					out[addr-1][1] = 1;
+					break;
+				case op_addr16:
+					out[addr-1][1] = 2;
+					addr++;	// reserve next space for a byte
+					break;
+				case op_addr11:
+					out[addr-1][1] = 3;
+					break;
+				default: 
+					break;
 			}
 		}
 	}
@@ -195,28 +224,39 @@ void substitute_labels(unsigned char hex_array[][2]){
 	int i = -1;
 	while(1){
 		i++;
-		unsigned char *type = &hex_array[i][1];
-		if(*type==255){	// end of hex array
+		unsigned char type = hex_array[i][1];
+		if(type==255){	// end of hex array
 			break;
 		}
-		if(*type==0){	// defined data - skip
+		if(type==0){	// defined data - skip
 			continue;
 		}
+
 		int loc = all_labels[hex_array[i][0]].addr;
 		if(loc<0){
 			print_error(0,"Label not defined",all_labels[hex_array[i][0]].name);
 		}
-		if(*type==2){	// addr16
-			hex_array[i][0] = loc/256;
-			hex_array[i+1][0] = loc - 256*hex_array[i][0];
-			i++;
-		}
-		else if(*type==1){	// offset
-			int offset = loc - i;
-			if(offset>127 || offset<-127){	// todo: find actual bound
-				print_error(0,"Label offset out of range",all_labels[hex_array[i][0]].name);
-			}
-			hex_array[i][0] = offset<0 ? 255+offset : offset-1;
+
+		switch(type){
+			case 1:
+				{
+				int offset = loc - i;
+				if(offset>127 || offset<-127){	// todo: find actual bound
+					print_error(0,"Label offset out of range",all_labels[hex_array[i][0]].name);
+				}
+				hex_array[i][0] = offset<0 ? 255+offset : offset-1;
+				}
+				break;
+			case 3:
+				if(!set_acall_addr(&hex_array[i-1][0],&hex_array[i][0],loc+org_addr,i+org_addr)){
+					print_error(0,"Label is not in the same page for ACALL",all_labels[hex_array[i][0]].name);
+				}
+				break;
+			case 2:
+				hex_array[i][0] = loc>>8;
+				hex_array[i+1][0] = loc - (hex_array[i][0]<<8);
+				i++;
+				break;
 		}
 	}
 }

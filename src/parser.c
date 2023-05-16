@@ -15,6 +15,10 @@ unsigned char get_opcode(enum mnemonic_type mn,struct operand op[]){
             if(op[j].type==op_label && search<=op_offset && search>=op_addr11){   // labels can replace offset,addr16,addr11
                 continue;
             }
+            if(op[j].type==op_direct && search==op_addr11){   // adddr11 takes direct values as well 
+		// this will give out #11, the correct opcode will be calculated from the value later
+                continue;
+            }
             if(op[j].type!=search){
                 break;
             }
@@ -55,6 +59,7 @@ int check_sfr(char *word,struct operand *out){
 	char last = l>3 ? word[l-1] : 0;
 	if(word[l-2]=='.' && last<='7' && last>='0'){
 		for(int i=0;i<11;i++){	// 0-10 defined_vars are bit addressable
+			//labels can replace offset,addr16,addr11 
 			if(str_cmp(defined_vars[i].name,word,'.')){
 				out->type = op_bit;
 				out->value = defined_vars[i].addr + last - '0';
