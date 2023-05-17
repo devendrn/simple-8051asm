@@ -7,5 +7,5 @@
 *.hex
 
 # Folders
-/build/
-
+/build
+/test
