@@ -82,14 +82,14 @@ int check_sfr(char *word,struct operand *out){
 }
 
 // converts the following formats of string to int
-// 12 12h 0x12 -12 'a' 1110b
+// 12 12h 0x12 -12 +12 'a' 1110b
 int str_to_int(int *out_val,char *str){
-	int base = 10;
-	int start = 0;
-	int end = strlen(str) - 1;
+	unsigned char base = 10;
+	unsigned char start = 0;
+	unsigned char end = strlen(str) - 1;
 
 	// ascii - 'a'
-	if(end - start == 2 && str[start]==str[end] && str[end]=='\''){
+	if(end==2 && str[start]==str[end] && str[end]=='\''){
 		*out_val = (int)str[start+1];
 		return 1;
 	}
@@ -112,10 +112,22 @@ int str_to_int(int *out_val,char *str){
 
 	for(int i=end,j=1;i>=start;i--,j*=base){
 		char w = str[i];
-		if(i==start && w=='-' && *out_val<256){	// negative index from 0xff
-			*out_val = 256-*out_val;
-			return 1;
+
+		if(w=='-'){		// negative index from 0xff
+			if(i==start && *out_val<256){
+				*out_val = 256-*out_val;
+				return 1;
+			}
+			return 0;	//sign should always be at start
 		}
+
+		if(w=='+'){		// plus will be ignored
+			if(i==start){
+				return 1;
+			}
+			return 0;
+		}
+
 		int iw = w-'0';	// char to int (0-9)
 		if(base==16 && w<='f' && w>='a'){
 			iw = w-87;	// hex char to int (a-f)
