@@ -8,4 +8,6 @@
 
 # Folders
 /build
-/test
+
+# Include hex files for tests
+!test/hex/*

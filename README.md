@@ -5,6 +5,8 @@ Simple assembler for 8051 microcontrollers. Outputs in Intel Hex format.
 ## !! Unfinished !!
 
 #### To-do:
+ - Fix label issues
+ - Add more examples
  - Reformat code
  - Optimize code
  - Detailed error log

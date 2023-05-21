@@ -300,5 +300,5 @@ const struct instruction all_instructions[256] = {
     {mn_mov,{op_r4,op_a,op_none}},
     {mn_mov,{op_r5,op_a,op_none}},
     {mn_mov,{op_r6,op_a,op_none}},
-    {mn_mov,{op_r7,op_a,op_none}},
+    {mn_mov,{op_r7,op_a,op_none}}
 };

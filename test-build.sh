@@ -9,6 +9,7 @@ fi
 
 # test files will be in name.asm, name.hex pairs
 TEST_DIR=./test/
+HEX_DIR=${TEST_DIR}hex/
 TEST_FILES=$TEST_DIR*.asm
 
 echo "TEST DIR: $TEST_DIR"
@@ -16,7 +17,10 @@ echo "TEST DIR: $TEST_DIR"
 for TEST_ASM in $TEST_FILES; do
 	if [ -f "$TEST_ASM" ]; then
 
-		TEST_HEX_ORG=${TEST_ASM%.asm}.hex
+    TEST_FILE_NAME=${TEST_ASM##*/}
+
+		#TEST_HEX_ORG=${TEST_ASM%.asm}.hex
+		TEST_HEX_ORG=${HEX_DIR}${TEST_FILE_NAME%.asm}.hex
 		TEST_HEX_GEN=${TEST_ASM%.asm}-temp.hex
 
 		# line

@@ -1,0 +1,12 @@
+mov a,0xff
+mov a,10
+mov a,101b
+mov a,'d'
+mov a,-2
+mov a,+10
+mov a,#0x11
+mov a,#10
+mov a,#111b
+mov a,#-2
+mov a,#+10
+mov a,#'g'
