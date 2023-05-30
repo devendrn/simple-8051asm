@@ -103,7 +103,9 @@ extern const char* all_mnemonics[];
 extern const struct sfr {
   char name[5];
   int addr;
-} defined_vars[];
+} all_sfrs[];
+extern const char sfr_bitaddr_end;
+extern const char sfr_end;
 
 // all 8051 instructions
 extern const struct instruction {

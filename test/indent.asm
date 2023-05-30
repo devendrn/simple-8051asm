@@ -28,9 +28,9 @@ mov  a,0x13			;
 
 test2:
   mov a,0x11
-  mov b,0x12
+  mov b,0x12; flipped when assembled ?? 0x12 first then b??
 
-        test3:    
+        test3:
         mov a,b
 
 test4   :mov a,b

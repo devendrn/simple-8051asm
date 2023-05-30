@@ -1,7 +1,9 @@
 #include "literals.h"
 
 // all sfrs (basic 8051)
-const struct sfr defined_vars[] = {
+const char sfr_bitaddr_end = 10;
+const char sfr_end = 20;
+const struct sfr all_sfrs[] = {
     // bit addressable (0-10)
     {"acc", 0xe0},
     {"psw", 0xd0},

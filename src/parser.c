@@ -3,49 +3,168 @@
 #include <string.h>
 
 #include "literals.h"
-
-// return opcode of matching instruction
-unsigned char get_opcode(enum mnemonic_type mn, struct operand op[]) {
-  for (int i = 0; i < 256; i++) {
-    if (mn != all_instructions[i].mnemonic) {
-      continue;
-    }
-    int j;
-    for (j = 0; j < 3; j++) {
-      enum operand_type search = all_instructions[i].operands[j];
-      if (op[j].type == op_label && search <= op_offset &&
-          search >= op_addr11) {  // labels can replace offset,addr16,addr11
-        continue;
-      }
-      if (op[j].type == op_direct &&
-          search == op_addr11) {  // adddr11 takes direct values as well
-        // this will give out #11, the correct opcode will be calculated from
-        // the value later
-        continue;
-      }
-      if (op[j].type != search) {
-        break;
-      }
-    }
-    if (j > 2) {
-      return i;  // return instruction opcode
-    }
-  }
-  return 0xa5;  // no matching instruction found
-}
+#include "debug.h"
 
 // check if string is a valid label
 int check_label(char *label) {
-  if (isalpha(label[0])) {  // first char of label must be an alphabet
-    for (int i = 1; label[i] != '\0';
-         i++) {  // other chars must be alphanumeric
-      if (!isalnum(label[i])) {
+  // first char of label must be an alphabet or _
+  // other chars must be alphanumeric or _
+  char c = label[0];
+  if (isalpha(c) || c == '_') {
+    for (int i = 1; label[i] != '\0'; i++) {
+      c = label[i];
+      if (!isalnum(c) && c != '_') {
         return 0;
       }
     }
     return 1;
   }
   return 0;
+}
+
+// push defined labels with their address
+void push_label_src(char *label, int addr, struct labels *all_labels) {
+  if (!check_label(label)) {
+    print_error(1, "Invalid label name", label);
+    return;
+  }
+  int i;
+  for (i = 0; all_labels[i].name[0] != '\0'; i++) {  // check if label already exists
+    if (!strcmp(all_labels[i].name, label)) {
+      if (all_labels[i].addr >= 0) {
+        print_error(1, "Label already defined previously", label);
+      }
+      all_labels[i].addr = addr;
+      return;
+    }
+  }
+  memcpy(all_labels[i].name, label, strlen(label) + 1);
+  all_labels[i].addr = addr;
+}
+
+// find label and return its index 
+// insert label and return new index if not found
+// address is -1 when pushing (replaced later when src is found)
+int search_label(char *label, struct labels *all_labels) {
+  int i;
+  for (i = 0; i < all_labels[i].name[0] != '\0'; i++) {
+    if (!strcmp(label, all_labels[i].name)) {
+      return i;
+    }
+  }
+  memcpy(all_labels[i].name, label, strlen(label));
+  all_labels[i].addr = -1;
+  return i;
+}
+
+// split lines into sub strings 
+char parse_line(FILE *file, char *mnemonic, char operands[3][16], int addr, struct labels *label_array) {
+  mnemonic[0] = '\0';
+  operands[0][0] = operands[1][0] = operands[2][0] = '\0';
+  char operand_count = 0;
+  char part = 0;  // 0-label 1-mnemonic 2-operands
+  char after_space = 0, use_case = 0;
+  unsigned char mi = 0, oi = 0;
+  char c;
+  while (1) {
+    c = fgetc(file);
+    
+    // skip to eol if comment
+    // close strings before breaking out 
+    if (c == ';') {
+      while (c != '\n') {
+        c = fgetc(file);
+      }
+    }
+    if (c == '\n' || c == EOF) {
+      mnemonic[mi] = '\0';
+      operands[operand_count][oi] = '\0';
+      break;
+    }
+
+    // skip spaces and tabs
+    if (c == ' ' || c == '\t') {
+      after_space = 1;
+      continue;
+    }
+    
+    // check for label/mnemonic
+    if (part < 2){
+      if (c == ':' && part == 0) {
+        mnemonic[mi] = '\0';
+        push_label_src(mnemonic, addr, label_array);
+        mnemonic[0] = '\0';
+        mi = 0;
+        part = 1;
+        continue;
+      }
+      if (after_space && mi > 0) {
+        mnemonic[mi] = '\0';
+        part = 2;
+      } else {
+        mnemonic[mi++] = tolower(c);
+      }
+    }
+
+    // check for operands
+    if (part == 2) {
+      if (c == ',') {
+        operands[operand_count][oi] = '\0';
+        oi = 0;
+        if (operand_count > 1) {
+          print_error(1, "Too many operands", "");
+          while (c != '\n') {
+            c = fgetc(file);
+          }
+          return 0;
+        }
+        operand_count++;
+        continue;
+      }
+      if (c == '\'') {
+        use_case = 1 - use_case;  // preserve case for chars inside ' '
+      }
+      operands[operand_count][oi++] = use_case ? c : tolower(c);
+    }
+    after_space = 0;
+  }
+  return 1;
+}
+
+// compare mnemonic and operand enum with table
+// return opcode of matching instruction
+// return 0xa5 if not found
+unsigned char get_opcode(enum mnemonic_type mn, struct operand op[]) {
+  for (int i = 0; i < 256; i++) {
+    if (mn != all_instructions[i].mnemonic) {
+      continue;
+    }
+
+    char j;
+    for (j = 0; j < 3; j++) {
+      enum operand_type search = all_instructions[i].operands[j];
+
+      // labels can replace offset,addr16,addr11
+      if (op[j].type == op_label && search <= op_offset && search >= op_addr11) {
+        continue;
+      }
+
+      // adddr11 can replace direct values as well
+      if (op[j].type == op_direct && search == op_addr11) {
+        // this will give out 0x11 (first acall instruction)
+        // value will be corrected when assembling
+        continue;
+      }
+
+      if (op[j].type != search) {
+        break;
+      }
+    }
+    if (j > 2) {
+      return i;
+    }
+  }
+  return 0xa5;
 }
 
 // compare string up to specified char
@@ -59,16 +178,17 @@ int str_cmp(const char *word_l, const char *word_s, char end) {
 }
 
 // check if operand is a sfr
+// return address value if sfr
 int check_sfr(char *word, struct operand *out) {
   // check for sfr bit - bit.index
   int l = strlen(word);
   char last = l > 3 ? word[l - 1] : 0;
   if (word[l - 2] == '.' && last <= '7' && last >= '0') {
-    for (int i = 0; i < 11; i++) {  // 0-10 defined_vars are bit addressable
+    for (char i = 0; i <= sfr_bitaddr_end; i++) {  // 0-10 all_sfrs are bit addressable
       // labels can replace offset,addr16,addr11
-      if (str_cmp(defined_vars[i].name, word, '.')) {
+      if (str_cmp(all_sfrs[i].name, word, '.')) {
         out->type = op_bit;
-        out->value = defined_vars[i].addr + last - '0';
+        out->value = all_sfrs[i].addr + last - '0';
         return 1;
       }
     }
@@ -77,10 +197,10 @@ int check_sfr(char *word, struct operand *out) {
   }
 
   // check for sfr
-  for (int i = 0; i < 21; i++) {
-    if (!strcmp(defined_vars[i].name, word)) {
+  for (char i = 0; i <= sfr_end; i++) {
+    if (!strcmp(all_sfrs[i].name, word)) {
       out->type = op_direct;
-      out->value = defined_vars[i].addr;
+      out->value = all_sfrs[i].addr;
       return 1;
     }
   }
@@ -144,39 +264,8 @@ int str_to_int(int *out_val, char *str) {
   return 1;
 }
 
-// get a word from line
-char get_token(FILE *file, char *out_str, char end_char) {
-  char ch;
-  int i = 0;
-  char case_sensitive = 0;
-  while (1) {
-    ch = fgetc(file);
-    if (ch == ';') {
-      // if comment skip to eol
-      while (ch != '\n') {
-        ch = fgetc(file);
-      }
-      break;
-    } else if ((ch == ' ' || ch == '\t') && (end_char == ',' || i == 0)) {
-      // skip spaces and tabs if scanning for operands or if mnemonic not found
-      continue;
-    } else if (ch == end_char || ch == ':' || ch == '\n' || feof(file)) {
-      // break (check last char outside the func to detect label)
-      // break if eol/eof
-      break;
-    } else if (ch == '\'') {
-      // toggle case sensitive for '' operands
-      case_sensitive = 1 - case_sensitive;
-    }
-    out_str[i++] = case_sensitive ? ch : tolower(ch);
-  }
-  out_str[i] = '\0';  // end string
-  return ch;          // return last char
-}
-
-// get mnemonic enum from string
+// string to mnemonic enum
 enum mnemonic_type get_mnemonic_enum(char *word) {
-  // check through all possible mnemonics
   for (int i = 0; i < mn_invalid; i++) {
     if (!strcmp(all_mnemonics[i], word)) {
       return i;

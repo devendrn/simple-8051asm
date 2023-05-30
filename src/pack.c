@@ -3,15 +3,24 @@
 #include "pack.h"
 
 // pack bytes into intel hex format with record size of 16
-// :<byte_count><addr><record_type><bytes><checksum>
-void pack_ihex(FILE *file_out, unsigned char hex_array[][2], int org_addr) {
+void pack_ihex(char *file_name, unsigned char hex_array[][2], int org_addr) {
+
+  FILE *file_out = fopen(file_name, "w");
+  if (file_out == NULL) {
+    printf("Could not create '%s'\n", file_name);
+    return;
+  }
+
+  //// intel ihex format
+  // :<byte_count><addr><record_type><bytes><checksum>
+
   unsigned char byte_count = 0;
   unsigned int addr = org_addr >= 0 ? org_addr : 0;  // origin address
   unsigned char record_type = 0;
   unsigned char data[16];
   unsigned char checksum = 0;
 
-  int i = 0;
+  unsigned int i = 0;
   while (hex_array[i][1] != 255) {
     data[byte_count] = hex_array[i][0];
     checksum += data[byte_count];
@@ -35,6 +44,8 @@ void pack_ihex(FILE *file_out, unsigned char hex_array[][2], int org_addr) {
       checksum = 0;
     }
   }
-  fprintf(file_out, ":00000001FF");  // end
+  fprintf(file_out, ":00000001FF");
+
+  fclose(file_out);
 }
 

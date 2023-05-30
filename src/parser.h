@@ -4,21 +4,29 @@
 #include <stdio.h>
 
 #include "literals.h"
+#include "debug.h"
 
-unsigned char get_opcode(enum mnemonic_type mn, struct operand op[]);
-
-int check_label(char *label);
 
 int str_cmp(const char *word_l, const char *word_s, char end);
 
-int check_sfr(char *word, struct operand *out);
-
 int str_to_int(int *out_val, char *str);
 
-char get_token(FILE *file, char *out_str, char end_char);
+int check_label(char *label);
+
+int check_sfr(char *word, struct operand *out);
+
+void push_label_src(char *label, int addr, struct labels *all_labels);
+
+int search_label(char *label, struct labels *all_labels);
+
+char parse_line(FILE *file, char *mnemonic, char operands[3][16], int addr, struct labels *label_array);
+
+
+unsigned char get_opcode(enum mnemonic_type mn, struct operand op[]);
 
 enum mnemonic_type get_mnemonic_enum(char *word);
 
 struct operand get_operand_struct(char *word);
+
 
 #endif
