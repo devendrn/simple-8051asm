@@ -1,6 +1,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "literals.h"
 #include "debug.h"
@@ -11,14 +12,9 @@
 
 char mnemonic[16];
 char operands[3][16];
-struct labels all_labels[256];
 
 int org_addr = -1;   // origin address
 int addr = 0;        // byte address
-
-// [[data,substitute]...]
-// substitute = 0:skip  1:offset  2:addr16  255:end
-unsigned char out_hex[512][2];
 
 
 // correct acall opcode and value
@@ -35,7 +31,7 @@ unsigned char set_acall_addr(unsigned char *opcode, unsigned char *addr11, int v
 }
 
 // assemble into char array
-void assemble(unsigned char out[][2], char *mnemonic, char operands[3][16]) {
+void assemble(unsigned char out[][2], char *mnemonic, char operands[3][16], struct labels *all_labels) {
   char er = 0;
   char j = 0;   // num of operands with data
   int k = -1;  // label pos if any
@@ -157,7 +153,7 @@ void assemble(unsigned char out[][2], char *mnemonic, char operands[3][16]) {
 }
 
 // substitute undefined data(labels) with offset or address
-void substitute_labels(unsigned char hex_array[][2]) {
+void substitute_labels(unsigned char hex_array[][2], struct labels *all_labels) {
   int i = -1;
   while (1) {
     unsigned char type = hex_array[++i][1];
@@ -221,11 +217,24 @@ int main(int argc, char **argv) {
     return 0;
   }
 
+
+  struct labels *all_labels = calloc(512, sizeof(struct labels));
+
+  // [[data,substitute]...]
+  // substitute: 0=skip 1=offset 2=addr16 3=addr11 255=end
+  unsigned char (*out_hex)[2] = calloc(2048, sizeof(char));
+
+  if (all_labels == NULL || out_hex == NULL) {
+    printf("error: Memory allocation failed");
+    fclose(asm_file);
+    return 0;
+  }
+
   // process instructions line by line
   while (!feof(asm_file)) {
     debug_line++;
     if (parse_line(asm_file, mnemonic, operands, addr, all_labels)) {
-      assemble(out_hex, mnemonic, operands);
+      assemble(out_hex, mnemonic, operands, all_labels);
     }
   }
   out_hex[addr][1] = 255;
@@ -245,7 +254,7 @@ int main(int argc, char **argv) {
   }
 #endif
 
-  substitute_labels(out_hex);
+  substitute_labels(out_hex, all_labels);
 
 #ifdef DEBUG
   printf("\n\nFinal hex:\n");
@@ -261,6 +270,9 @@ int main(int argc, char **argv) {
   if (debug_errors == 0) {
     pack_ihex(file_out, out_hex, org_addr);
   }
+
+  free(all_labels);
+  free(out_hex);
 
   return 0;
 }
