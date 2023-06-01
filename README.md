@@ -11,10 +11,12 @@ You can test the output hex file with 8051 emulators like [emu8051](https://gith
 See [examples](examples/). `START:` and `END` are not required inside the .asm file
 ```
 ;comment
-       mov a,#55
-       mov r0,#04
-       add a,r0 ;another comment
-       mov r1,a
+       mov a, #55
+       mov r0, #-4
+       add a, r0 ;another comment
+       mov r1, a
+       mov r2, 'g'
+       mov p1, #0xff
 here:  sjmp here
 ```
 
@@ -22,9 +24,9 @@ here:  sjmp here
 
 There are some constraints to how this program works, and it is not production ready.
 Use the output hex files at your own risk.
- - Labels longer than 16 characters are not allowed.
- - Max number of allowed labels is 512.
- - Can only assemble 2kb.
+ - Labels longer than 16 characters are not allowed.
+ - Max number of allowed labels is 512.
+ - Can only assemble 2kb.
  - Call and Jump instructions must be explicit. Assembler does not substitute "call" and "jmp" keywords.
 
 ### To-do:
@@ -32,7 +34,6 @@ Use the output hex files at your own risk.
  - Auto call and jmp keyword
  - Dynamic allocation (fix label and hex limit)
  - Add more examples
- - Test labels
  - Optimize code
  - More error checks
  - Input file validation

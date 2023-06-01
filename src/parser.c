@@ -149,10 +149,10 @@ unsigned char get_opcode(enum mnemonic_type mn, struct operand op[]) {
         continue;
       }
 
-      // adddr11 can replace direct values as well
-      if (op[j].type == op_direct && search == op_addr11) {
-        // this will give out 0x11 (first acall instruction)
-        // value will be corrected when assembling
+      // offset, addr11, addr16 can replace direct values
+      // addr11 opcode is corrected later, for now it returns first match
+      // ajmp:0x01   acall:0x11
+      if (op[j].type == op_direct && (search == op_addr11 || search == op_addr16 || search == op_offset)) {
         continue;
       }
 
