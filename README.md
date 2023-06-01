@@ -1,8 +1,8 @@
 # simple-8051asm
 
-Simple 8051 Assembler is a simple, easy to use assembler for 8051 microcontrollers.
-It is designed for students and hobbiyists who want to quickly assemble small 8051 programs into a hex file.
-The assembler is written in C using only standard libraries and it packs output hex in Intel ihex format (with block size of 16).
+Simple 8051 Assembler is a simple, easy-to-use assembler for 8051 microcontrollers.
+It is designed for students and hobbyists who want to quickly assemble small 8051 programs into a hex file.
+The assembler is written in C using only standard libraries, and it packs output hex in Intel hex format (with a block size of 16).
 
 You can test the output hex file with 8051 emulators like [emu8051](https://github.com/jarikomppa/emu8051).
 
@@ -19,12 +19,12 @@ here:  sjmp here
 ```
 
 ## Limits
-
-There are some constraints to how this program works and it is not production ready.
+
+There are some constraints to how this program works, and it is not production ready.
 Use the output hex files at your own risk.
- - Labels longer than 16 charactors are not allowed
- - Max number of allowed labels is 512
- - Can only assemble 2kb
+ - Labels longer than 16 characters are not allowed.
+ - Max number of allowed labels is 512.
+ - Can only assemble 2kb.
 
 ### To-do:
 
@@ -45,7 +45,7 @@ make
 
 #### On Windows:
 
-If you have gcc installed, open cmd in project directory and run:
+If you have gcc installed, open cmd in the project directory and run:
 *not tested
 ```
 gcc src/*.c -o asm51.exe

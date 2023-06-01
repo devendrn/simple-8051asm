@@ -76,7 +76,7 @@ char parse_line(FILE *file, char *mnemonic, char operands[3][16], int addr, stru
         c = fgetc(file);
       }
     }
-    if (c == '\n' || c == EOF) {
+    if (c == '\n' || feof(file)) {
       mnemonic[mi] = '\0';
       operands[operand_count][oi] = '\0';
       break;
