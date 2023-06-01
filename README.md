@@ -19,15 +19,17 @@ here:  sjmp here
 ```
 
 ## Limits
-
+
 There are some constraints to how this program works, and it is not production ready.
 Use the output hex files at your own risk.
  - Labels longer than 16 characters are not allowed.
  - Max number of allowed labels is 512.
  - Can only assemble 2kb.
+ - Call and Jump instructions must be explicit. Assembler does not substitute "call" and "jmp" keywords.
 
 ### To-do:
 
+ - Auto call and jmp keyword
  - Dynamic allocation (fix label and hex limit)
  - Add more examples
  - Test labels
