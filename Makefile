@@ -1,14 +1,14 @@
-CC = gcc
+ASM_VERSION=0.2.7
+CC=gcc
 
-TARGET_EXEC = asm51
+BUILD_DIR=build
+TARGET_EXEC=$(BUILD_DIR)/asm51
 
-BUILD_DIR = build
-SRC_DIR = src
-
-SRCS = $(wildcard $(SRC_DIR)/*.c)
+SRC_DIR=src
+SRCS=$(wildcard $(SRC_DIR)/*.c)
 
 all:
-	$(CC) $(SRCS) -o $(BUILD_DIR)/$(TARGET_EXEC)
+	$(CC) $(SRCS) -o $(TARGET_EXEC) -DVERSION=\"$(ASM_VERSION)\"
 
 clean:
-	rm $(BUILD_DIR)/$(TARGET_EXEC)
+	rm $(TARGET_EXEC)

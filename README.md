@@ -8,7 +8,7 @@ You can test the output hex file with 8051 emulators like [emu8051](https://gith
 
 ## Accepted syntax
 
-See [examples](examples/). `START:` and `END` are not required inside the .asm file
+See [examples](examples/)
 ```
 ;comment
        mov a, #55
@@ -59,9 +59,13 @@ gcc src/*.c -o asm51.exe
 simple-8051asm only accepts one input and output file.
 ```
 asm51 [input_asm] -o [output_hex]
+
+-h   help
+-v   version
+-o   output file
+-d   debug
 ```
 Example:
 ```
 asm51 examples/sort.asm -o sort.hex
 ```
-

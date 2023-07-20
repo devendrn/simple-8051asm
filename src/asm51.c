@@ -8,14 +8,13 @@
 #include "parser.h"
 #include "pack.h"
 
-// #define DEBUG
+char debug = 0;
 
 char mnemonic[16];
 char operands[3][16];
 
 int org_addr = -1;   // origin address
 int addr = 0;        // byte address
-
 
 // correct acall opcode and value
 char set_addr11(unsigned char *opcode, unsigned char *addr11, int val, int current_addr) {
@@ -140,17 +139,9 @@ void assemble(unsigned char out[][2], char *mnemonic, char operands[3][16], stru
     }
   }
 
-#ifdef DEBUG
-  printf("\n%2d| %02x", debug_line, opcode);
-  data[0] > -1 ? printf(" %02x", data[0]) : printf("   ");
-  data[1] > -1 ? printf(" %02x", data[1]) : printf("   ");
-  if (mn != mn_none) {
-    printf(" |%6s >%6s |", mnemonic, all_mnemonics[mn]);
-    printf(" %8s > %8s:%4d |", operands[0], all_operands[op[0].type], op[0].value);
-    printf(" %8s > %8s:%4d |", operands[1], all_operands[op[1].type], op[1].value);
-    printf(" %8s > %8s:%4d |", operands[2], all_operands[op[2].type], op[2].value);
+  if (debug) {
+    print_instruction(debug_line, mnemonic, operands, mn, op, opcode, data);
   }
-#endif
 }
 
 // substitute undefined data(labels) with offset or address
@@ -198,23 +189,58 @@ int main(int argc, char **argv) {
   char *file_in;
   char *file_out = "a.hex";
 
-  if (argc == 2 && argv[1][0] == '-' && argv[1][1] == 'h') {
-    printf("Usage:\nasm51 [input_file] -o [output_file]\n");
-    return 1;
-  } else if (argc == 2 && argv[1][0] != '-') {
-    printf("%s", argv[1]);
-    file_in = argv[1];
-  } else if (argc == 4 && !strcmp("-o", argv[2])) {
-    file_in = argv[1];
-    file_out = argv[3];
-  } else {
-    printf("Invalid arguments: Use -h for help\n");
+  char arg_mode = 'i';
+  char got_fi = 0;
+  char got_fo = 0;
+  for (int i = 1; i<argc; i++) {
+    if (argv[i][0] == '-') {
+      switch(argv[i][1]){
+        case 'h':
+          printf("usage: asm51 [input file] -o [output file]\n -h  help\n -v  version\n -o  output file\n -d  debug\n");
+          return 1;
+        case 'o':
+          arg_mode = 'o';
+          break;
+        case 'v':
+          #ifdef VERSION
+          printf("simple-asm51: version %s\n", VERSION);
+          #endif
+          return 1;
+        case 'd':
+          debug = 1;
+          break;
+        default:
+          printf("error: invalid option -%c\nuse -h for help\n",argv[i][1]);
+          return 0;
+      }
+    } else {
+      if (arg_mode == 'i') {
+        if(got_fi){
+          printf("error: multiple input files\n");
+          return 0;
+        }
+        file_in = argv[i];
+        got_fi = 1;
+      } else if (arg_mode == 'o') {
+        if(got_fo){
+          printf("error: multiple output files\n");
+          return 0;
+        }
+        file_out = argv[i];
+        got_fo = 1;
+        arg_mode = 'i';
+      }
+    }
+  }
+
+  if (!got_fi) {
+    printf("error: no input file\n");
     return 0;
   }
 
   FILE *asm_file = fopen(file_in, "r");
   if (asm_file == NULL) {
-    printf("File '%s' not found\n", file_in);
+    printf("error: file '%s' not found\n", file_in);
     return 0;
   }
 
@@ -226,7 +252,7 @@ int main(int argc, char **argv) {
   unsigned char (*out_hex)[2] = calloc(2048, sizeof(char));
 
   if (all_labels == NULL || out_hex == NULL) {
-    printf("error: Memory allocation failed");
+    printf("error: memory allocation failed");
     fclose(asm_file);
     return 0;
   }
@@ -241,32 +267,16 @@ int main(int argc, char **argv) {
   out_hex[addr][1] = 255;
   fclose(asm_file);
 
-#ifdef DEBUG
-  printf("\n\nLabels:");
-  for (int i = 0; all_labels[i].name[0] != '\0'; i++) {
-    printf("\n%2d:%7s | %04x", i, all_labels[i].name, all_labels[i].addr);
+  if (debug) {
+    print_labels(all_labels);
+    print_hexarray(out_hex);
   }
-  printf("\n\nHex array:\n");
-  for (int i = 0; out_hex[i][1] != 255; i++) {
-    printf(" %02x %01x |", out_hex[i][0], out_hex[i][1]);
-    if ((i + 1) % 8 == 0) {
-      printf("\n");
-    }
-  }
-#endif
 
   substitute_labels(out_hex, all_labels);
 
-#ifdef DEBUG
-  printf("\n\nFinal hex:\n");
-  for (int i = 0; out_hex[i][1] != 255; i++) {
-    printf(" %02x", out_hex[i][0]);
-    if ((i + 1) % 8 == 0) {
-      printf("\n");
-    }
+  if (debug) {
+    print_hexarray_values(out_hex);
   }
-  printf("\n");
-#endif
 
   if (debug_errors == 0) {
     pack_ihex(file_out, out_hex, org_addr);
