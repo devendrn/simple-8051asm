@@ -195,6 +195,15 @@ int check_sfr(char *word, struct operand *out) {
     out->type = op_invalid;
     return 1;
   }
+  
+  // check for sfr bit - named
+  for (char i = 0; i <= sfr_bit_end; i++) {
+    if (!strcmp(all_sfr_bits[i].name, word)) {
+      out->type = op_bit;
+      out->value = all_sfr_bits[i].addr;
+      return 1;
+    }
+  }
 
   // check for sfr
   for (char i = 0; i <= sfr_end; i++) {

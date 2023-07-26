@@ -5,30 +5,77 @@ const char sfr_bitaddr_end = 10;
 const char sfr_end = 20;
 const struct sfr all_sfrs[] = {
     // bit addressable (0-10)
-    {"acc", 0xe0},
-    {"psw", 0xd0},
-    {"p0", 0x80},
-    {"p1", 0x90},
-    {"p2", 0xa0},
-    {"p3", 0xb0},
-    {"ie", 0xa8},
-    {"ip", 0xb8},
+    {"acc",  0xe0},
+    {"psw",  0xd0},
+    {"p0",   0x80},
+    {"p1",   0x90},
+    {"p2",   0xa0},
+    {"p3",   0xb0},
+    {"ie",   0xa8},
+    {"ip",   0xb8},
     {"tcon", 0x88},
     {"scon", 0x98},
     {"sbuf", 0x99},
 
     // not bit addressable (11-20)
-    {"sp", 0x81},
-    {"dpl", 0x82},
-    {"dph", 0x83},
-    {"tl0", 0x8a},
-    {"tl1", 0x8b},
-    {"th0", 0x8c},
-    {"th1", 0x8d},
+    {"sp",   0x81},
+    {"dpl",  0x82},
+    {"dph",  0x83},
+    {"tl0",  0x8a},
+    {"tl1",  0x8b},
+    {"th0",  0x8c},
+    {"th1",  0x8d},
     {"pcon", 0x87},
     {"tmod", 0x89},
-    {"b", 0xf0}
+    {"b",    0xf0}
 };
+
+const struct sfr all_sfr_bits[] = {
+    // psw bits
+    {"p",   0xd0},
+    {"ov",  0xd2},
+    {"rs0", 0xd3},
+    {"rs1", 0xd4},
+    {"f0",  0xd5},
+    {"ac",  0xd6},
+    {"cy",  0xd7},
+    
+    // tcon bits
+    {"it0", 0x88},
+    {"ie0", 0x89},
+    {"it1", 0x8a},
+    {"ie1", 0x8b},
+    {"tr0", 0x8c},
+    {"tf0", 0x8d},
+    {"tr1", 0x8e},
+    {"tf1", 0x8f},
+
+    // scon bits
+    {"ri",  0x98},
+    {"ti",  0x99},
+    {"rb8", 0x9a},
+    {"tb8", 0x9b},
+    {"ren", 0x9c},
+    {"sm2", 0x9d},
+    {"sm1", 0x9e},
+    {"sm0", 0x9f},
+
+    // ie bits
+    {"ex0", 0xa8},
+    {"et0", 0xa9},
+    {"ex1", 0xaa},
+    {"et1", 0xab},
+    {"es",  0xac},
+    {"ea",  0xaf},
+
+    // ip bits
+    {"px0", 0xb8},
+    {"pt0", 0xb9},
+    {"px1", 0xba},
+    {"pt1", 0xbb},
+    {"ps",  0xbc},
+};
+const char sfr_bit_end = sizeof(all_sfr_bits)/sizeof(struct sfr) - 1;
 
 const char * all_operands[] = {
 	"a",

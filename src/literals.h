@@ -100,12 +100,15 @@ extern const char* all_operands[];
 extern const char* all_mnemonics[];
 
 // all special function register names
-extern const struct sfr {
+struct sfr {
   char name[5];
   int addr;
-} all_sfrs[];
+}; 
+extern const struct sfr all_sfrs[];
+extern const struct sfr all_sfr_bits[];
 extern const char sfr_bitaddr_end;
 extern const char sfr_end;
+extern const char sfr_bit_end;
 
 // all 8051 instructions
 extern const struct instruction {
