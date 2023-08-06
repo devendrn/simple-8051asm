@@ -180,15 +180,15 @@ int str_cmp(const char *word_l, const char *word_s, char end) {
 // check if operand is a sfr
 // return address value if sfr
 int check_sfr(char *word, struct operand *out) {
-  // check for sfr bit - bit.index
+  // check for sfr bit - sfr_name.bit
   int l = strlen(word);
   char last = l > 3 ? word[l - 1] : 0;
   if (word[l - 2] == '.' && last <= '7' && last >= '0') {
-    for (char i = 0; i <= sfr_bitaddr_end; i++) {  // 0-10 all_sfrs are bit addressable
-      // labels can replace offset,addr16,addr11
-      if (str_cmp(all_sfrs[i].name, word, '.')) {
+    for (char i = 0; i < sfr_bit_addressable_n; i++) {  // 0-10 all_sfrs are bit addressable
+      // labels can replace offset, addr16, addr11
+      if (str_cmp(sfr_bit_addressable[i].name, word, '.')) {
         out->type = op_bit;
-        out->value = all_sfrs[i].addr + last - '0';
+        out->value = sfr_bit_addressable[i].addr + last - '0';
         return 1;
       }
     }
@@ -196,23 +196,32 @@ int check_sfr(char *word, struct operand *out) {
     return 1;
   }
   
-  // check for sfr bit - named
-  for (char i = 0; i <= sfr_bit_end; i++) {
-    if (!strcmp(all_sfr_bits[i].name, word)) {
+  // check for sfr bit - bit_name
+  for (char i = 0; i < sfr_bit_n; i++) {
+    if (!strcmp(sfr_bit[i].name, word)) {
       out->type = op_bit;
-      out->value = all_sfr_bits[i].addr;
+      out->value = sfr_bit[i].addr;
       return 1;
     }
   }
 
-  // check for sfr
-  for (char i = 0; i <= sfr_end; i++) {
-    if (!strcmp(all_sfrs[i].name, word)) {
+  // check for sfr - sfr_name
+  for (char i = 0; i < sfr_bit_addressable_n; i++) {
+    if (!strcmp(sfr_bit_addressable[i].name, word)) {
       out->type = op_direct;
-      out->value = all_sfrs[i].addr;
+      out->value = sfr_bit_addressable[i].addr;
       return 1;
     }
   }
+
+  for (char i = 0; i < sfr_non_bit_addressable_n; i++) {
+    if (!strcmp(sfr_non_bit_addressable[i].name, word)) {
+      out->type = op_direct;
+      out->value = sfr_non_bit_addressable[i].addr;
+      return 1;
+    }
+  }
+
   return 0;
 }
 

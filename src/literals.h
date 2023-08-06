@@ -95,20 +95,23 @@ struct labels {
   int addr;
 };
 
+// special function registers
+struct sfr {
+  char name[5];
+  int addr;
+};
+
 // all valid operands and mnemonics
 extern const char* all_operands[];
 extern const char* all_mnemonics[];
 
-// all special function register names
-struct sfr {
-  char name[5];
-  int addr;
-}; 
-extern const struct sfr all_sfrs[];
-extern const struct sfr all_sfr_bits[];
-extern const char sfr_bitaddr_end;
-extern const char sfr_end;
-extern const char sfr_bit_end;
+// all sfrs
+extern const struct sfr sfr_bit[];
+extern const struct sfr sfr_bit_addressable[];
+extern const struct sfr sfr_non_bit_addressable[];
+extern const char sfr_bit_n;
+extern const char sfr_bit_addressable_n;
+extern const char sfr_non_bit_addressable_n;
 
 // all 8051 instructions
 extern const struct instruction {

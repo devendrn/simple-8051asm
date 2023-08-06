@@ -244,7 +244,6 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-
   struct labels *all_labels = calloc(512, sizeof(struct labels));
 
   // [[data,substitute]...]
