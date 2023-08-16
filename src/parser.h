@@ -15,11 +15,11 @@ int check_label(char *label);
 
 int check_sfr(char *word, struct operand *out);
 
-void push_label_src(char *label, int addr, struct labels *all_labels);
+void push_label_src(char *label, int addr, struct label *all_labels);
 
-int search_label(char *label, struct labels *all_labels);
+int search_label(char *label, struct label *all_labels);
 
-char parse_line(FILE *file, char *mnemonic, char operands[3][16], int addr, struct labels *label_array);
+char parse_line(FILE *file, char *mnemonic, char operands[3][16], int addr, struct label *label_array);
 
 
 unsigned char get_opcode(enum mnemonic_type mn, struct operand op[]);

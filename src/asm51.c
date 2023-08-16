@@ -8,13 +8,102 @@
 #include "parser.h"
 #include "pack.h"
 
-char debug = 0;
+#define HEX_MIN_SIZE 128
+#define HEX_MAX_SIZE 16384
+#define SUBS_MIN_SIZE 128
+#define SUBS_MAX_SIZE 16384
+#define LABELS_MIN_SIZE 32
+#define LABELS_MAX_SIZE 4096
+
+char debug = 0; 
 
 char mnemonic[16];
 char operands[3][16];
 
-int org_addr = -1;   // origin address
-int addr = 0;        // byte address
+struct asm_data {
+  //int org[16];  // 16 org pages
+  int org;        // org address
+  int addr;       // current assembled byte
+  
+  // labels
+  struct label *labels;      // change struct name to label_data
+  int labels_filled;
+  int labels_size;
+  
+  // assembled bytes
+  unsigned char *hex;
+  int hex_filled;
+  int hex_size;
+
+  // substitute data: 16-bit, 2 for mode, 14 for index
+  // modes: 1=offset 2=addr16 3=addr11
+  unsigned int *subs;
+  int subs_filled;
+  int subs_size;
+} asmd;
+
+// check hex array size and reallocate space if needed
+void check_hex_bounds() {
+  if(asmd.addr+4 < asmd.hex_size) {
+    return;
+  }
+
+  asmd.hex_size *= 2;
+  if (asmd.hex_size > HEX_MAX_SIZE) {
+    printf("error: hex array too large");
+    exit(0);
+  }
+
+  unsigned char *tmp_hex = realloc(asmd.hex, asmd.hex_size * sizeof(unsigned int));
+  if (tmp_hex == NULL) {
+    printf("error: memory reallocation failed for hex array");
+    exit(0);
+  } else {
+    asmd.hex = tmp_hex;
+  }
+}
+
+// check subs array size and reallocate space if needed
+void check_subs_bounds() {
+  if(asmd.subs_filled+4 < asmd.subs_size) {
+    return;
+  }
+
+  asmd.subs_size *= 2;
+  if (asmd.subs_size > SUBS_MAX_SIZE) {
+    printf("error: substitute array too large");
+    exit(0);
+  }
+
+  unsigned int *tmp_hex = realloc(asmd.subs, asmd.subs_size * sizeof(unsigned int));
+  if (tmp_hex == NULL) {
+    printf("error: memory reallocation failed for substitute array");
+    exit(0);
+  } else {
+    asmd.subs = tmp_hex;
+  }
+}
+
+// check labels array size and reallocate space if needed
+void check_labels_bounds() {
+  if(asmd.labels_filled+4 < asmd.labels_size) {
+    return;
+  }
+
+  asmd.labels_size *= 2;
+  if (asmd.labels_size > LABELS_MAX_SIZE) {
+    printf("error: labels array too large");
+    exit(0);
+  }
+
+  struct label *tmp_labels = realloc(asmd.labels, asmd.labels_size * sizeof(struct label));
+  if (tmp_labels == NULL) {
+    printf("error: memory reallocation failed for label array");
+    exit(0);
+  } else {
+    asmd.labels = tmp_labels;
+  }
+}
 
 // correct acall opcode and value
 char set_addr11(unsigned char *opcode, unsigned char *addr11, int val, int current_addr) {
@@ -32,7 +121,7 @@ char set_addr11(unsigned char *opcode, unsigned char *addr11, int val, int curre
 }
 
 // assemble into char array
-void assemble(unsigned char out[][2], char *mnemonic, char operands[3][16], struct labels *all_labels) {
+void assemble(char *mnemonic, char operands[3][16]) {
   char er = 0;
   char j = 0;   // num of operands with data
   int k = -1;  // label pos if any
@@ -65,10 +154,10 @@ void assemble(unsigned char out[][2], char *mnemonic, char operands[3][16], stru
 
   // set origin
   if (mn == mn_org) {
-    if (org_addr < 0) {
+    if (asmd.org < 0) {
       if (op[0].type == op_direct && op[1].type == op_none &&
           op[2].type == op_none) {
-        org_addr = op[0].value;
+        asmd.org = op[0].value;
       } else {
         print_error(1, "org requires a valid address", "");
       }
@@ -86,7 +175,9 @@ void assemble(unsigned char out[][2], char *mnemonic, char operands[3][16], stru
   }
   
   // pack opcode
-  out[addr++][0] = opcode;
+  asmd.hex[asmd.addr++] = opcode;
+  
+  check_hex_bounds();
 
   // **mov direct, direct stores data in reverse order
   if (opcode == 0x85) {
@@ -99,17 +190,16 @@ void assemble(unsigned char out[][2], char *mnemonic, char operands[3][16], stru
   if (data[0] > -1) {
     if (op[0].type == op_dptr) {
       // dptr takes 2 bytes
-      int msb = data[0] >> 8;
-      out[addr++][0] = msb;
-      out[addr++][0] = data[0] - (msb << 8);
+      asmd.hex[asmd.addr++] = data[0] >> 8;
+      asmd.hex[asmd.addr++] = data[0] & 0x00ff;
       if (data[0] > 0xffff) {
         print_error(1, "Value cannot be larger than 65535", "");
       }
     } else {
-      out[addr++][0] = data[0];
+      asmd.hex[asmd.addr++] = data[0];
       if ((mn == mn_acall || mn == mn_ajmp) && k < 0) {
-        unsigned int current_addr = org_addr >= 0 ? addr + org_addr : addr;
-        if (!set_addr11(&out[addr - 2][0], &out[addr][0], data[0], current_addr)) {
+        unsigned int current_addr = asmd.org >= 0 ? asmd.addr + asmd.org : asmd.addr;
+        if (!set_addr11(&asmd.hex[asmd.addr - 2], &asmd.hex[asmd.addr], data[0], current_addr)) {
           print_error(1, "Address not in the same page", "");
         }
       } else if (data[0] > 0xff) {
@@ -118,7 +208,7 @@ void assemble(unsigned char out[][2], char *mnemonic, char operands[3][16], stru
     }
   }
   if (data[1] > -1) {
-    out[addr++][0] = data[1];
+    asmd.hex[asmd.addr++] = data[1];
     if (data[1] > 0xff) {
       print_error(1, "Value cannot be larger than 255", "");
     }
@@ -126,17 +216,23 @@ void assemble(unsigned char out[][2], char *mnemonic, char operands[3][16], stru
 
   // pack label details if any
   if (k > -1) {
-    int pos = search_label(operands[k], all_labels);
-    out[addr - 1][0] = pos;
-    enum operand_type parse_type = all_instructions[opcode].operands[k];
-    if (parse_type == op_offset) {
-        out[addr - 1][1] = 1;
-    } else if (parse_type == op_addr16) {
-        out[addr - 1][1] = 2;
-        addr++;  // reserve next space for a byte
-    } else if (parse_type == op_addr11) {
-        out[addr - 1][1] = 3;
+    int pos = search_label(operands[k], asmd.labels);
+    asmd.hex[asmd.addr - 1] = pos;
+    switch (all_instructions[opcode].operands[k]) {
+      case op_offset:
+        asmd.subs[asmd.subs_filled++] = 0x4000 + asmd.addr - 1;
+        break;
+      case op_addr16:
+        asmd.subs[asmd.subs_filled++] = 0x8000 + asmd.addr - 1;
+        asmd.addr++;  // reserve next space for a byte
+        break;
+      case op_addr11:
+        asmd.subs[asmd.subs_filled++] = 0xc000 + asmd.addr - 1;
+        break;
+      default:
+        break;
     }
+    check_subs_bounds();
   }
 
   if (debug) {
@@ -145,43 +241,37 @@ void assemble(unsigned char out[][2], char *mnemonic, char operands[3][16], stru
 }
 
 // substitute undefined data(labels) with offset or address
-void substitute_labels(unsigned char hex_array[][2], struct labels *all_labels) {
-  int i = -1;
-  while (1) {
-    unsigned char type = hex_array[++i][1];
+void substitute_labels() {
+  for (int i = 0; i < asmd.subs_filled; i++) {
+    char type = asmd.subs[i] >> 14;
+    int index = asmd.subs[i] & 0x3fff;
+    char label_index = asmd.hex[index];
+    int loc = asmd.labels[label_index].addr;
+    char *name = asmd.labels[label_index].name;
 
-    if (type == 255) {  // end of hex array
-      break;
-    }
-
-    if (type == 0) {  // defined data - skip
-      continue;
-    }
-
-    int loc = all_labels[hex_array[i][0]].addr;
     if (loc < 0) {
-      print_error(0, "Label not defined", all_labels[hex_array[i][0]].name);
+      print_error(0, "Label not defined", name);
     }
 
-    if (type == 1) {  // offset
-      int offset = loc - i;
-      if (offset > 127 || offset < -128) {
-        print_error(0, "Label offset out of range",
-                    all_labels[hex_array[i][0]].name);
-      }
-      hex_array[i][0] = offset < 0 ? 255 + offset : offset - 1;
-    } else if (type == 2) { // addr16
-        hex_array[i][0] = loc >> 8;
-        hex_array[i + 1][0] = loc - (hex_array[i][0] << 8);
-        i++;
-    } else if (type == 3) {
-      if (!set_addr11(&hex_array[i - 1][0], &hex_array[i][0],
-                          loc + org_addr + 1, i + org_addr)) {
-        print_error(0, "Label is not in the same page for ACALL",
-                    all_labels[hex_array[i][0]].name);
-      }
+    switch (type) {
+      case 1:; // offset
+        int offset = loc - index;
+        if (offset > 127 || offset < -128) {
+          print_error(0, "Label offset out of range", name);
+        }
+        asmd.hex[index] = offset < 0 ? 255 + offset : offset - 1;
+        break;
+      case 2: // addr16
+        asmd.hex[index] = loc >> 8;
+        asmd.hex[index + 1] = loc & 0x00ff;
+        break;
+      case 3: // addr11
+        if (!set_addr11(&asmd.hex[index - 1], &asmd.hex[index], loc + asmd.org + 1, index + asmd.org)) {
+          print_error(0, "Label is not in the same page for ACALL", name);
+        }
+      default:
+        break;
     }
-
   }
 }
 
@@ -244,45 +334,62 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  struct labels *all_labels = calloc(512, sizeof(struct labels));
+  asmd.org = -1;
+  asmd.addr = 0;
+  asmd.hex_filled = 0;
+  asmd.subs_filled = 0;
+  asmd.labels_filled = 0;
+  asmd.hex_size = HEX_MIN_SIZE;
+  asmd.subs_size = SUBS_MIN_SIZE;
+  asmd.labels_size = LABELS_MIN_SIZE;
 
-  // [[data,substitute]...]
-  // substitute: 0=skip 1=offset 2=addr16 3=addr11 255=end
-  unsigned char (*out_hex)[2] = calloc(2048, sizeof(char));
+  asmd.hex = calloc(HEX_MIN_SIZE, sizeof(char));
+  asmd.subs = calloc(SUBS_MIN_SIZE, sizeof(int));
+  asmd.labels = calloc(LABELS_MIN_SIZE, sizeof(struct label));
 
-  if (all_labels == NULL || out_hex == NULL) {
+  if (asmd.labels == NULL || asmd.hex == NULL) {
     printf("error: memory allocation failed");
     fclose(asm_file);
     return 0;
   }
 
-  // process instructions line by line
+  if (debug) {
+    printf(" - parsed instructions ---------------");
+  }
+
   while (!feof(asm_file)) {
     debug_line++;
-    if (parse_line(asm_file, mnemonic, operands, addr, all_labels)) {
-      assemble(out_hex, mnemonic, operands, all_labels);
+    if (parse_line(asm_file, mnemonic, operands, asmd.addr, asmd.labels)) {
+      assemble(mnemonic, operands);
     }
+    check_labels_bounds(); // to-do - move this
   }
-  out_hex[addr][1] = 255;
+  asmd.hex_filled = asmd.addr;
+
+
+  if (debug) {
+    print_labels(asmd.labels);
+    print_subs_array(asmd.subs, asmd.subs_filled);
+    printf(" before substitute:");
+    print_hex_array(asmd.hex, asmd.hex_filled);
+  }
+
+  substitute_labels();
+
+  if (debug) {
+    printf("\n after substitute:");
+    print_hex_array(asmd.hex, asmd.hex_filled);
+  }
+
   fclose(asm_file);
 
-  if (debug) {
-    print_labels(all_labels);
-    print_hexarray(out_hex);
-  }
-
-  substitute_labels(out_hex, all_labels);
-
-  if (debug) {
-    print_hexarray_values(out_hex);
-  }
-
   if (debug_errors == 0) {
-    pack_ihex(file_out, out_hex, org_addr);
+    pack_ihex(file_out, asmd.hex, asmd.hex_filled, asmd.org);
   }
 
-  free(all_labels);
-  free(out_hex);
+  free(asmd.labels);
+  free(asmd.hex);
+  free(asmd.subs);
 
   return 0;
 }

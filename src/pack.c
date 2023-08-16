@@ -3,7 +3,7 @@
 #include "pack.h"
 
 // pack bytes into intel hex format with record size of 16
-void pack_ihex(char *file_name, unsigned char hex_array[][2], int org_addr) {
+void pack_ihex(char *file_name, unsigned char *hex, int hex_size, int org_addr) {
 
   FILE *file_out = fopen(file_name, "w");
   if (file_out == NULL) {
@@ -21,12 +21,12 @@ void pack_ihex(char *file_name, unsigned char hex_array[][2], int org_addr) {
   unsigned char checksum = 0;
 
   unsigned int i = 0;
-  while (hex_array[i][1] != 255) {
-    data[byte_count] = hex_array[i][0];
+  while (i < hex_size) {
+    data[byte_count] = hex[i];
     checksum += data[byte_count];
     byte_count++;
     i++;
-    if (byte_count == 16 || hex_array[i][1] == 255) {  // one record complete
+    if (byte_count == 16 || i == hex_size) {  // one record complete
 
       // checksum = 2s complement of sum of all bytes
       int addr_msb = addr / 256;

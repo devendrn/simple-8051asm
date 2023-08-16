@@ -90,7 +90,7 @@ struct operand {
 };
 
 // label name and address (16 bit)
-struct labels {
+struct label {
   char name[16];
   int addr;
 };

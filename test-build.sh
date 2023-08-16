@@ -51,3 +51,5 @@ for TEST_ASM in $TEST_FILES; do
 
 	fi
 done
+
+rm $TEST_DIR*.hex

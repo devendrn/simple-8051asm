@@ -23,7 +23,7 @@ int check_label(char *label) {
 }
 
 // push defined labels with their address
-void push_label_src(char *label, int addr, struct labels *all_labels) {
+void push_label_src(char *label, int addr, struct label *all_labels) {
   if (!check_label(label)) {
     print_error(1, "Invalid label name", label);
     return;
@@ -45,7 +45,7 @@ void push_label_src(char *label, int addr, struct labels *all_labels) {
 // find label and return its index 
 // insert label and return new index if not found
 // address is -1 when pushing (replaced later when src is found)
-int search_label(char *label, struct labels *all_labels) {
+int search_label(char *label, struct label *all_labels) {
   int i;
   for (i = 0; i < all_labels[i].name[0] != '\0'; i++) {
     if (!strcmp(label, all_labels[i].name)) {
@@ -58,7 +58,7 @@ int search_label(char *label, struct labels *all_labels) {
 }
 
 // split lines into sub strings 
-char parse_line(FILE *file, char *mnemonic, char operands[3][16], int addr, struct labels *label_array) {
+char parse_line(FILE *file, char *mnemonic, char operands[3][16], int addr, struct label *label_array) {
   mnemonic[0] = '\0';
   operands[0][0] = operands[1][0] = operands[2][0] = '\0';
   char operand_count = 0;

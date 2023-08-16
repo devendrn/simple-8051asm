@@ -3,6 +3,6 @@
 
 #include <stdio.h>
 
-void pack_ihex(char *file_name, unsigned char hex_array[][2], int org_addr);
+void pack_ihex(char *file_name, unsigned char *hex, int hex_size, int org_addr);
 
 #endif

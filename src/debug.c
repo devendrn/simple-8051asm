@@ -37,17 +37,20 @@ void print_instruction(unsigned int debug_line, char *mnemonic, char operands[][
           if (op[i].value < 0) {
             printf(" %s", all_operands[op[i].type]);
           } else {
-            printf(" %s(%d)", all_operands[op[i].type], op[i].value);
+            // op enum are in order addr11, addr16, offset, bit, direct, immed, label
+            char *names[] = {"addr11", "addr16", "offset", "bit", "direct", "immed", "label"};
+            char j = op[i].type - op_addr11;
+            printf(" %s(%d)", names[j], op[i].value);
           }
         }
       }
     }
 }
 
-void print_hexarray(unsigned char out_hex[][2]) {
-  printf("\n - unsubstitued hex --------------------\n");
-  for (int i = 0; out_hex[i][1] != 255; i++) {
-    printf(" %02x:%01x", out_hex[i][0], out_hex[i][1]);
+void print_hex_array(unsigned char *hex, int hex_size) {
+  printf("\n - hex array -----------\n");
+  for (int i = 0; i < hex_size; i++) {
+    printf(" %02x", hex[i]);
     if ((i + 1) % 8 == 0) {
       printf("\n");
     }
@@ -55,18 +58,17 @@ void print_hexarray(unsigned char out_hex[][2]) {
   printf("\n");
 }
 
-void print_hexarray_values(unsigned char out_hex[][2]) {
-  printf("\n - final hex -----------\n");
-  for (int i = 0; out_hex[i][1] != 255; i++) {
-    printf(" %02x", out_hex[i][0]);
-    if ((i + 1) % 8 == 0) {
-      printf("\n");
-    }
+void print_subs_array(unsigned int *subs, int subs_size) {
+  printf("\n - substitutes --\n");
+  char *modes[] = {"offset", "addr16", "addr11"};
+  for (int i = 0; i < subs_size; i++) {
+    char mode = subs[i] >> 14;
+    printf(" 0x%04x  %01x=%s\n", subs[i] & 0x3fff, mode, modes[mode - 1]);
   }
   printf("\n");
 }
 
-void print_labels(struct labels all_labels[]) {
+void print_labels(struct label all_labels[]) {
   printf("\n\n - labels --------");
   for (int i = 0; all_labels[i].name[0] != '\0'; i++) {
     printf("\n%2d:%8s 0x%04x", i, all_labels[i].name, all_labels[i].addr);
