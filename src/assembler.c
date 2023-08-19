@@ -172,7 +172,7 @@ void assemble(char *mnemonic, char operands[3][16]) {
   // set origin
   if (mn == mn_org) {
     if (op[0].type == op_direct && op[1].type == op_none && op[2].type == op_none) {
-      asmd.orgs[asmd.orgs_filled-1][2] = asmd.addr - 1;  // end prev org page
+      asmd.orgs[asmd.orgs_filled-1][2] = asmd.addr > 0 ? asmd.addr - 1 : 0;  // end prev org page
       asmd.orgs[asmd.orgs_filled][0] = op[0].value;
       asmd.orgs[asmd.orgs_filled][1] = asmd.addr;
       asmd.orgs_filled++;

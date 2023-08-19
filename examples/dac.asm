@@ -1,12 +1,12 @@
 ; triangular waveform using dac
 ; p1 used for dac
 
-mov r0, p1
+mov r0, #p1
 
 ; start ascent
 mov a, #0x00
 ascent: 
-  mov p1, a
+  mov @r0, a
   acall delay
   inc a
   jnz ascent
@@ -14,7 +14,7 @@ ascent:
 ; ascent complete, start descend
 mov a, #0xff
 descend:
-  mov p1, a
+  mov @r0, a
   acall delay
   dec a
   jnz descend

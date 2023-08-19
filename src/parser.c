@@ -44,7 +44,7 @@ void push_label_src(char *label, int addr, struct label *all_labels) {
 
 // find label and return its index 
 // insert label and return new index if not found
-// address is -1 when pushing (replaced later when src is found)
+// address is 0xffff when pushing (replaced later when src is found)
 int search_label(char *label, struct label *all_labels) {
   int i;
   for (i = 0; i < all_labels[i].name[0] != '\0'; i++) {
@@ -184,7 +184,7 @@ int check_sfr(char *word, struct operand *out) {
   int l = strlen(word);
   char last = l > 3 ? word[l - 1] : 0;
   if (word[l - 2] == '.' && last <= '7' && last >= '0') {
-    for (char i = 0; i < sfr_bit_addressable_n; i++) {  // 0-10 all_sfrs are bit addressable
+    for (char i = 0; i < sfr_bit_addressable_n; i++) {
       // labels can replace offset, addr16, addr11
       if (str_cmp(sfr_bit_addressable[i].name, word, '.')) {
         out->type = op_bit;
@@ -305,8 +305,17 @@ struct operand get_operand_struct(char *word) {
     }
   }
 
+  int start = 0;
+  if (word[0] == '#') {  // immed operand
+    out.type = op_immed;
+    start = 1;
+  }
+
   // check for special function registers like acc,b,psw etc
-  if (check_sfr(word, &out)) {
+  if (check_sfr(&word[start], &out)) {
+    if (start == 1) {
+      out.type = op_immed;
+    }
     return out;
   }
 
@@ -317,11 +326,6 @@ struct operand get_operand_struct(char *word) {
   }
 
   // check for value based operands
-  int start = 0;
-  if (word[0] == '#') {  // immed operand
-    out.type = op_immed;
-    start = 1;
-  }
   if (str_to_int(&out.value, &word[start])) {
     if (out.type != op_immed) {
       out.type = op_direct;

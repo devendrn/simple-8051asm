@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BUILD=./build/asm51
+BUILD=build/asm51
 
 if [ ! -f "$BUILD" ]; then
 	echo "ERROR: $BUILD not found"
@@ -8,25 +8,26 @@ if [ ! -f "$BUILD" ]; then
 fi
 
 # test files will be in name.asm, name.hex pairs
-TEST_DIR=./test/
-HEX_DIR=${TEST_DIR}hex/
-TEST_FILES=$TEST_DIR*.asm
+TEST_DIR=test
+EXAMPLE_DIR=examples
+HEX_DIR=$TEST_DIR/hex
+TEST_FILES="$TEST_DIR/*.asm $EXAMPLE_DIR/*.asm"
 
-echo "TEST DIR: $TEST_DIR"
+echo "TEST DIRS: $TEST_DIR/ $EXAMPLE_DIR/"
 
 for TEST_ASM in $TEST_FILES; do
 	if [ -f "$TEST_ASM" ]; then
 
     TEST_FILE_NAME=${TEST_ASM##*/}
+    TEST_FILE_NAME=${TEST_FILE_NAME%.asm}
 
-		#TEST_HEX_ORG=${TEST_ASM%.asm}.hex
-		TEST_HEX_ORG=${HEX_DIR}${TEST_FILE_NAME%.asm}.hex
-		TEST_HEX_GEN=${TEST_ASM%.asm}-temp.hex
+		TEST_HEX_ORG=$HEX_DIR/$TEST_FILE_NAME.hex
+		TEST_HEX_GEN=$TEST_DIR/$TEST_FILE_NAME-temp.hex
 
 		# line
 		printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
 
-		echo "CHECKING: ${TEST_ASM/$TEST_DIR}"
+		echo "CHECKING: $TEST_ASM"
 
 		# assemble into hex
 		OUT=$($BUILD $TEST_ASM -o $TEST_HEX_GEN)
@@ -52,4 +53,4 @@ for TEST_ASM in $TEST_FILES; do
 	fi
 done
 
-rm $TEST_DIR*.hex
+rm $TEST_DIR/*.hex

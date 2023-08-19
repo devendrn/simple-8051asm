@@ -17,6 +17,10 @@ void pack_ihex(char *file_name, unsigned char *hex, int hex_size, unsigned int o
   for (int j = 0; j < orgs_filled; j++) {
     unsigned int start = orgs[j][1];
     unsigned int end = orgs[j][2];
+    
+    if (start == end) {
+      continue;
+    }
 
     unsigned char byte_count = 0;
     unsigned int addr = orgs[j][0];  // origin address
