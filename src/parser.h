@@ -21,12 +21,10 @@ int search_label(char *label, struct label *all_labels);
 
 char parse_line(FILE *file, char *mnemonic, char operands[3][16], int addr, struct label *label_array);
 
-
 unsigned char get_opcode(enum mnemonic_type mn, struct operand op[]);
 
 enum mnemonic_type get_mnemonic_enum(char *word);
 
 struct operand get_operand_struct(char *word);
-
 
 #endif

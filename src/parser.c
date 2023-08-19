@@ -31,8 +31,8 @@ void push_label_src(char *label, int addr, struct label *all_labels) {
   int i;
   for (i = 0; all_labels[i].name[0] != '\0'; i++) {  // check if label already exists
     if (!strcmp(all_labels[i].name, label)) {
-      if (all_labels[i].addr >= 0) {
-        print_error(1, "Label already defined previously", label);
+      if (all_labels[i].addr != 0xffff) {
+        print_error(1, "Label redeclared", label);
       }
       all_labels[i].addr = addr;
       return;
@@ -53,7 +53,7 @@ int search_label(char *label, struct label *all_labels) {
     }
   }
   memcpy(all_labels[i].name, label, strlen(label));
-  all_labels[i].addr = -1;
+  all_labels[i].addr = 0xffff;
   return i;
 }
 

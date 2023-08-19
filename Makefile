@@ -1,5 +1,4 @@
-ASM_VERSION=0.2.7
-#CC=gcc
+ASM_VERSION=0.2.9
 CC=gcc
 MD=mkdir
 
