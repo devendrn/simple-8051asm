@@ -170,17 +170,27 @@ void assemble(char *mnemonic, char operands[3][16]) {
   }
 
   // set origin
-  if (mn == mn_org) {
-    if (op[0].type == op_direct && op[1].type == op_none && op[2].type == op_none) {
-      asmd.orgs[asmd.orgs_filled-1][2] = asmd.addr > 0 ? asmd.addr - 1 : 0;  // end prev org page
-      asmd.orgs[asmd.orgs_filled][0] = op[0].value;
-      asmd.orgs[asmd.orgs_filled][1] = asmd.addr;
-      asmd.orgs_filled++;
-    } else {
-      print_error(1, "org requires a valid address", "");
-    }
-    check_orgs_bounds();
-    return;
+  switch(mn) {
+    case mn_org:
+      if (op[0].type == op_direct && op[1].type == op_none && op[2].type == op_none) {
+        asmd.orgs[asmd.orgs_filled-1][2] = asmd.addr > 0 ? asmd.addr - 1 : 0;  // end prev org page
+        asmd.orgs[asmd.orgs_filled][0] = op[0].value;
+        asmd.orgs[asmd.orgs_filled][1] = asmd.addr;
+        asmd.orgs_filled++;
+      } else {
+        print_error(1, "org requires a valid address", "");
+      }
+      check_orgs_bounds();
+      return;
+    case mn_db:
+      if (op[0].type == op_direct && op[1].type == op_none && op[2].type == op_none) {
+        asmd.hex[asmd.addr++] = op[0].value;
+      } else {
+        print_error(1, "db requires valid data", "");
+      }
+      return;
+    default:
+      break;
   }
 
   unsigned char opcode = get_opcode(mn, op);

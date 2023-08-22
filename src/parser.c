@@ -7,7 +7,7 @@
 
 // check if string is a valid label
 int check_label(char *label) {
-  // first char of label must be an alphabet or _
+  // first char must be an alphabet or _
   // other chars must be alphanumeric or _
   char c = label[0];
   if (isalpha(c) || c == '_') {

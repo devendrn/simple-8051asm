@@ -4,8 +4,6 @@
 #include <stdio.h>
 
 #include "literals.h"
-#include "debug.h"
-
 
 int str_cmp(const char *word_l, const char *word_s, char end);
 

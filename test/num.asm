@@ -10,3 +10,10 @@ mov a,#111b
 mov a,#-2
 mov a,#+10
 mov a,#'g'
+
+db 0xff
+db 10
+db 'd'
+db -2
+db +10
+db 101b

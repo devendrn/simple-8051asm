@@ -32,8 +32,9 @@ enum operand_type {
   op_invalid
 };
 
-// mnemonics - org,invalid,none are extra types not part of 8051
+// mnemonics
 enum mnemonic_type {
+  // 8051 mnemonics
   mn_nop,
   mn_ajmp,
   mn_ljmp,
@@ -78,8 +79,11 @@ enum mnemonic_type {
   mn_djnz,
   mn_xchd,
   mn_movx,
+
+  // assembler mnemonic
   mn_none,
   mn_org,
+  mn_db,
   mn_invalid
 };
 

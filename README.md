@@ -6,32 +6,15 @@ The assembler is written in C using only standard libraries, and it packs output
 
 You can test the output hex file with 8051 emulators like [emu8051](https://github.com/jarikomppa/emu8051).
 
-## Accepted syntax
+## Manual
 
-See [examples](examples/)
-```
-;comment
-       mov a, #55
-       mov r0, #-4
-       add a, r0 ;another comment
-       mov r1, a
-       mov r2, 'g'
-       mov p1, #0xff
-here:  sjmp here
-```
-
-## Limits
-
-There are some constraints to how this program works, and it is not production ready.
-Use the output hex files at your own risk.
- - Labels longer than 16 characters are not allowed.
+[Simple-8051asm Manual](manual.md)
 
 ### To-do:
 
+ - Support for more assembly directives
+ - Improve error warnings
  - Add more examples
- - Optimize code
- - More error checks
- - Input file validation
 
 ## Building
 

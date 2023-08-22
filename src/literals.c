@@ -98,6 +98,7 @@ const char * all_operands[] = {
 };
 
 const char * all_mnemonics[] = {
+  // 8051 mnemonics
   "nop",
   "ajmp",
   "ljmp",
@@ -142,8 +143,11 @@ const char * all_mnemonics[] = {
   "djnz",
   "xchd",
   "movx",
+
+  // assembler mnemonics
   "",
-  "org"
+  "org",
+  "db"
 };
 
 // 8051 instruction table

@@ -30,10 +30,8 @@ void pack_ihex(char *file_name, unsigned char *hex, int hex_size, unsigned int o
     
     unsigned int i = start;
     while (i <= end) {
-      data[byte_count] = hex[i];
-      checksum += data[byte_count];
-      byte_count++;
-      i++;
+      checksum += hex[i];
+      data[byte_count++] = hex[i++];
       if (byte_count == 16 || i == end + 1) {  // one record complete
 
         // checksum = 2s complement of sum of all bytes
