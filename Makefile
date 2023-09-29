@@ -4,6 +4,7 @@ MD=mkdir
 
 BUILD_DIR=build
 TARGET_EXEC=$(BUILD_DIR)/asm51
+TEST_SH=./test-build.sh
 
 SRC_DIR=src
 SRCS=$(wildcard $(SRC_DIR)/*.c)
@@ -16,3 +17,6 @@ all:
 
 clean:
 	rm $(TARGET_EXEC)
+	
+check:
+	$(TEST_SH) 

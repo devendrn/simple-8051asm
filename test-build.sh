@@ -15,6 +15,8 @@ TEST_FILES="$TEST_DIR/*.asm $EXAMPLE_DIR/*.asm"
 
 echo "TEST DIRS: $TEST_DIR/ $EXAMPLE_DIR/"
 
+FAILED=false
+
 for TEST_ASM in $TEST_FILES; do
 	if [ -f "$TEST_ASM" ]; then
 
@@ -25,7 +27,7 @@ for TEST_ASM in $TEST_FILES; do
 		TEST_HEX_GEN=$TEST_DIR/$TEST_FILE_NAME-temp.hex
 
 		# line
-		printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
+		printf '%*s\n' "${COLUMNS}" '' | tr ' ' -
 
 		echo "CHECKING: $TEST_ASM"
 
@@ -35,6 +37,7 @@ for TEST_ASM in $TEST_FILES; do
 		if [[ -z "$OUT" ]]; then
 			echo "ASSEMBLE: done"
 		else
+      FAILED=true
 			echo "ASSEMBLE: failed"
 			echo "$OUT"
 			continue
@@ -46,6 +49,7 @@ for TEST_ASM in $TEST_FILES; do
 		if [[ -z "$DIFF" ]]; then
 			echo "VERIFY  : done"
 		else
+      FAILED=true
 			echo "VERIFY  : failed"
 			echo "$DIFF"
 		fi
@@ -54,3 +58,7 @@ for TEST_ASM in $TEST_FILES; do
 done
 
 rm $TEST_DIR/*.hex
+
+if $FAILED; then
+	exit 1
+fi
